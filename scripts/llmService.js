@@ -37,14 +37,21 @@ export async function generateAnswer(query, settings, searchCallback) {
       function: {
         name: "search_piazza",
         description: `Search Piazza posts for information using keywords.
-        Returns up to ${searchResultLimit} answered posts per call.
-        Piazza is a Q&A platform where students can ask questions about their classes and instructors/students can provide answers`.trim(),
+Returns up to ${searchResultLimit} answered posts per call.
+Piazza is a Q&A platform where students can ask questions about their classes and instructors/students can provide answers.
+Supports advanced search operators:
+- Use spaces for AND (e.g., "office hours" matches both).
+- Use | for OR (e.g., "office | hours" matches either).
+- Use - for NOT (e.g., "office -hours" matches office but not hours).
+- Use quotes for exact phrases (e.g., "office hours").
+- Use parentheses () to group and chain operators (e.g., "(exam | quiz) date").
+- Important: DO NOT use any other syntax when forming search queries.`.trim(),
         parameters: {
           type: "object",
           properties: {
             keywords: {
               type: "string",
-              description: "The keywords to search for.",
+              description: "The keywords or advanced search query to search for.",
             },
           },
           required: ["keywords"],
@@ -52,17 +59,18 @@ export async function generateAnswer(query, settings, searchCallback) {
       },
     },
   ];
+  console.log(tools);
 
   let messages = [
     {
       role: "system",
       content:
-        `You are a Piazza AI assistant. The user will ask a question/query and you must use the search_piazza tool to find relevant posts to answer the user's question/query.
-        You can call the tool multiple times with different keywords if needed, but you have a limit of ${TOOL_ROUND_LIMIT} tool-call rounds and at most ${TOOL_CALLS_PER_ROUND_LIMIT} tool calls per round.
-        - Prioritize the most recent, up-to-date posts when forming your answer.
-        - Prefer using posts with instructor answers or instructor-endorsed answers if possible.
-        - If only posts with student answers are available, use those, but indicate in your answer that the information came from a student.
-        Once you have enough information, provide a concise and helpful answer. If you cannot find the answer, explain what is missing.`.trim(),
+`You are a Piazza AI assistant. The user will ask a question/query and you must use the search_piazza tool to find relevant posts to answer the user's question/query.
+You can call the tool multiple times with different keywords if needed, but you have a limit of ${TOOL_ROUND_LIMIT} tool-call rounds and at most ${TOOL_CALLS_PER_ROUND_LIMIT} tool calls per round.
+- Prioritize the most recent, up-to-date posts when forming your answer.
+- Prefer using posts with instructor answers or instructor-endorsed answers if possible.
+- If only posts with student answers are available, use those, but indicate in your answer that the information came from a student.
+Once you have enough information, provide a concise and helpful answer. If you cannot find the answer, explain what is missing.`.trim(),
     },
     { role: "user", content: `Query:\n${query}` },
   ];
@@ -91,7 +99,6 @@ export async function generateAnswer(query, settings, searchCallback) {
 
     const message = data.choices[0].message;
     messages.push(message);
-    console.log(messages);
 
     if (!message.tool_calls || message.tool_calls.length === 0) {
       break;
@@ -105,9 +112,7 @@ export async function generateAnswer(query, settings, searchCallback) {
 
         sources.forEach((s) => allSources.set(s.id, s));
 
-        const contextBlocks = posts
-          .map((post) => extractPostContent(post))
-          .filter(Boolean);
+        const contextBlocks = posts.map((post) => extractPostContent(post)).filter(Boolean);
 
         let context = contextBlocks.join("\n");
         context = truncateContext(context, 18000);
@@ -123,6 +128,7 @@ export async function generateAnswer(query, settings, searchCallback) {
   }
 
   const finalAnswer = messages[messages.length - 1].content;
+  console.log(messages);
   console.log(`final answer: ${finalAnswer}`);
 
   if (!finalAnswer) throw new Error("AI request returned no text output.");
