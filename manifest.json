@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Piazza AI Search",
+  "version": "0.1.0",
+  "description": "Search Piazza posts with AI assistance.",
+  "action": {
+    "default_title": "Piazza AI",
+    "default_popup": "pages/popup.html"
+  },
+  "options_ui": {
+    "page": "pages/options.html",
+    "open_in_tab": true
+  },
+  "permissions": ["storage", "cookies"],
+  "host_permissions": [
+    "https://piazza.com/*",
+    "https://api.x.ai/*"
+  ],
+  "background": {
+    "service_worker": "scripts/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://piazza.com/class/*"],
+      "js": ["scripts/content.js"],
+      "css": ["styles/content.css"]
+    }
+  ]
+}

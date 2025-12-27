@@ -1,0 +1,109 @@
+#piazza-ai-results-overlay {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  width: 400px;
+  max-height: 80vh;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+}
+
+.piazza-ai-header {
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 8px 8px 0 0;
+}
+
+.piazza-ai-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+#piazza-ai-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #999;
+}
+
+#piazza-ai-close:hover {
+  color: #333;
+}
+
+#piazza-ai-content {
+  padding: 15px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.piazza-ai-status {
+  color: #666;
+  font-style: italic;
+}
+
+.piazza-ai-error {
+  color: #d9534f;
+}
+
+.piazza-ai-answer {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.piazza-ai-sources h4 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.piazza-ai-sources ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.piazza-ai-sources li {
+  margin-bottom: 3px;
+}
+
+.piazza-ai-sources a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.piazza-ai-sources a:hover {
+  text-decoration: underline;
+}
+
+.piazza-ai-meta {
+  margin-top: 15px;
+  font-size: 11px;
+  color: #999;
+  text-align: right;
+}
+
+#piazza-ai-search-btn {
+  background-color: #3e7aab;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#piazza-ai-search-btn:hover {
+  background-color: #2d5a7e;
+}
