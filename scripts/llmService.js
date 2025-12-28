@@ -59,13 +59,12 @@ Supports advanced search operators:
       },
     },
   ];
-  console.log(tools);
 
   let messages = [
     {
       role: "system",
       content:
-        `You are a Piazza AI assistant. The user will ask a question/query and you must use the search_piazza tool to find relevant posts to answer the user's question/query.
+        `You are a Piazza AI assistant. The user will ask a question/query and you must use the search_piazza tool to find relevant posts to answer the user's question/query. Note, the user's query pertains to a specific class on Piazza.
 You can call the tool multiple times with different keywords if needed, but you have a limit of ${TOOL_ROUND_LIMIT} tool-call rounds and at most ${TOOL_CALLS_PER_ROUND_LIMIT} tool calls per round.
 - Prioritize the most recent, up-to-date posts when forming your answer.
 - Prefer using posts with instructor answers or instructor-endorsed answers if possible.
