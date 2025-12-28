@@ -353,7 +353,7 @@ export async function generateAnswer(query, settings, searchCallback) {
     settings.model || (provider.models && provider.models.length > 0 ? provider.models[0].id : "");
   const apiKeys = settings.apiKeys || {};
   const apiKey = apiKeys[providerId];
-  const searchResultLimit = settings.topK;
+  const searchResultLimit = settings.maxSearchResults;
   const apiStyle = provider.apiStyle || "openai-chat";
   const adapter = getAdapter(apiStyle);
 

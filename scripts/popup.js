@@ -3,7 +3,7 @@ const extensionApi = typeof browser !== "undefined" ? browser : chrome;
 const DEFAULT_SETTINGS = {
   model: "",
   apiKey: "",
-  topK: 10,
+  maxSearchResults: 10,
   lastNid: "",
 };
 

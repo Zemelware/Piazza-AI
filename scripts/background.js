@@ -2,7 +2,7 @@ import { searchPosts, getPost } from "./piazzaService.js";
 import { generateAnswer } from "./llmService.js";
 
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
-const DEFAULT_TOPK = 10;
+const DEFAULT_MAX_SEARCH_RESULTS = 10;
 
 extensionApi.action.onClicked.addListener(() => {
   extensionApi.runtime.openOptionsPage();
@@ -17,8 +17,13 @@ extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function handleAiSearch({ query, nid, topK }) {
-  const settings = await extensionApi.storage.local.get(["apiKeys", "model", "topK", "provider"]);
+async function handleAiSearch({ query, nid, maxSearchResults }) {
+  const settings = await extensionApi.storage.local.get([
+    "apiKeys",
+    "model",
+    "maxSearchResults",
+    "provider",
+  ]);
 
   if (nid) {
     try {
@@ -29,9 +34,11 @@ async function handleAiSearch({ query, nid, topK }) {
     } catch (_) {}
   }
 
-  const requestedTopK = Number(topK || settings.topK || DEFAULT_TOPK);
-  const clampedTopK = Math.max(1, requestedTopK);
-  settings.topK = clampedTopK;
+  const requestedMaxSearchResults = Number(
+    maxSearchResults || settings.maxSearchResults || DEFAULT_MAX_SEARCH_RESULTS
+  );
+  const clampedMaxSearchResults = Math.max(1, requestedMaxSearchResults);
+  settings.maxSearchResults = clampedMaxSearchResults;
 
   // Define the search callback for the LLM
   const searchCallback = async (keywords) => {
@@ -41,7 +48,7 @@ async function handleAiSearch({ query, nid, topK }) {
     const limitedPostIds = answeredResults
       .map((item) => item.id)
       .filter(Boolean)
-      .slice(0, clampedTopK);
+      .slice(0, clampedMaxSearchResults);
 
     if (limitedPostIds.length === 0) {
       return { posts: [], sources: [] };

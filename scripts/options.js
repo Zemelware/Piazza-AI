@@ -6,7 +6,7 @@ const DEFAULT_SETTINGS = {
   provider: DEFAULT_PROVIDER,
   model: "",
   apiKeys: {}, // Store keys per provider: { xai: "...", google: "..." }
-  topK: 10,
+  maxSearchResults: 10,
 };
 
 const CUSTOM_MODEL_VALUE = "__custom__";
@@ -19,7 +19,7 @@ const elements = {
   customModel: document.getElementById("customModel"),
   apiKey: document.getElementById("apiKey"),
   apiKeyLink: document.getElementById("apiKeyLink"),
-  topK: document.getElementById("topK"),
+  maxSearchResults: document.getElementById("maxSearchResults"),
   status: document.getElementById("status"),
 };
 
@@ -103,7 +103,7 @@ async function loadSettings() {
   populateProviders();
   elements.provider.value = settings.provider;
   updateModelOptions(settings.provider, settings.model);
-  elements.topK.value = settings.topK;
+  elements.maxSearchResults.value = settings.maxSearchResults;
 }
 
 // Handle provider change
@@ -135,7 +135,7 @@ elements.form.addEventListener("submit", async (event) => {
     provider: elements.provider.value,
     model: selectedModel,
     apiKeys: currentApiKeys,
-    topK: Number(elements.topK.value || DEFAULT_SETTINGS.topK),
+    maxSearchResults: Number(elements.maxSearchResults.value || DEFAULT_SETTINGS.maxSearchResults),
   };
 
   await extensionApi.storage.local.set(settings);

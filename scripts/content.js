@@ -69,12 +69,12 @@
     return nid;
   }
 
-  function getStoredTopK() {
-    const result = extensionApi.storage.local.get(["topK"]);
+  function getStoredMaxSearchResults() {
+    const result = extensionApi.storage.local.get(["maxSearchResults"]);
     if (result && typeof result.then === "function") {
       return result;
     }
-    return new Promise((resolve) => extensionApi.storage.local.get(["topK"], resolve));
+    return new Promise((resolve) => extensionApi.storage.local.get(["maxSearchResults"], resolve));
   }
 
   function sendExtensionMessage(message) {
@@ -173,16 +173,16 @@
       return;
     }
 
-    const stored = await getStoredTopK();
-    const parsedTopK = Number(stored.topK);
-    const topK = parsedTopK > 0 ? parsedTopK : undefined;
+    const stored = await getStoredMaxSearchResults();
+    const parsedMaxSearchResults = Number(stored.maxSearchResults);
+    const maxSearchResults = parsedMaxSearchResults > 0 ? parsedMaxSearchResults : undefined;
 
     setSearching(true);
     showLoading();
 
     sendExtensionMessage({
       type: "AI_SEARCH",
-      payload: { query, nid, topK },
+      payload: { query, nid, maxSearchResults },
     })
       .then(async (response) => {
         setSearching(false);
