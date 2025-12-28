@@ -12,10 +12,7 @@
     "open_in_tab": true
   },
   "permissions": ["storage", "cookies"],
-  "host_permissions": [
-    "https://piazza.com/*",
-    "https://api.x.ai/*"
-  ],
+  "host_permissions": ["https://piazza.com/*", "https://api.x.ai/*"],
   "background": {
     "service_worker": "scripts/background.js",
     "type": "module"
@@ -23,8 +20,19 @@
   "content_scripts": [
     {
       "matches": ["https://piazza.com/class/*"],
-      "js": ["scripts/content.js"],
-      "css": ["styles/content.css"]
+      "js": [
+        "lib/marked.min.js",
+        "lib/katex.min.js",
+        "lib/auto-render.min.js",
+        "scripts/content.js"
+      ],
+      "css": ["lib/katex.min.css", "styles/content.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/fonts/*"],
+      "matches": ["https://piazza.com/*"]
     }
   ]
 }
