@@ -351,6 +351,8 @@ export async function generateAnswer(query, settings, searchCallback) {
   const provider = getProvider(providerId);
   const model =
     settings.model || (provider.models && provider.models.length > 0 ? provider.models[0].id : "");
+  const modelConfig = provider.models?.find((m) => m.id === model);
+  const modelDisplayName = modelConfig ? modelConfig.name : model;
   const apiKeys = settings.apiKeys || {};
   const apiKey = apiKeys[providerId];
   const searchResultLimit = settings.maxSearchResults;
@@ -465,7 +467,7 @@ export async function generateAnswer(query, settings, searchCallback) {
     sources: Array.from(allSources.values()),
     meta: {
       provider: provider.name,
-      model: model,
+      model: modelDisplayName,
     },
   };
 }
