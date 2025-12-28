@@ -1,125 +1,577 @@
-#piazza-ai-results-overlay {
+/* AI Search Floating Action Button */
+#piazza-ai-fab {
   position: fixed;
-  top: 60px;
-  right: 20px;
-  width: 400px;
-  max-height: 80vh;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10000;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
   display: flex;
-  flex-direction: column;
-  font-family: sans-serif;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 9999;
 }
 
-.piazza-ai-header {
-  padding: 10px 15px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #eee;
+#piazza-ai-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(249, 115, 22, 0.5);
+}
+
+#piazza-ai-fab:active {
+  transform: scale(0.95);
+}
+
+#piazza-ai-fab svg {
+  width: 24px;
+  height: 24px;
+  fill: white;
+}
+
+#piazza-ai-fab .fab-tooltip {
+  position: absolute;
+  right: 68px;
+  background: #1a1a2e;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#piazza-ai-fab:hover .fab-tooltip {
+  opacity: 1;
+}
+
+/* AI Search Panel */
+#piazza-ai-panel {
+  position: fixed;
+  top: 0;
+  right: -480px;
+  width: 460px;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#piazza-ai-panel.open {
+  right: 0;
+}
+
+/* Panel Header */
+.piazza-ai-panel-header {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.piazza-ai-panel-header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-radius: 8px 8px 0 0;
+  margin-bottom: 20px;
 }
 
-.piazza-ai-header h3 {
+.piazza-ai-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.piazza-ai-panel-title svg {
+  width: 24px;
+  height: 24px;
+  fill: white;
+}
+
+.piazza-ai-panel-title h2 {
   margin: 0;
-  font-size: 16px;
-  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
 }
 
-#piazza-ai-close {
-  background: none;
+#piazza-ai-panel-close {
+  background: rgba(255, 255, 255, 0.15);
   border: none;
-  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   cursor: pointer;
-  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
 }
 
-#piazza-ai-close:hover {
-  color: #333;
+#piazza-ai-panel-close:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-#piazza-ai-content {
-  padding: 15px;
-  overflow-y: auto;
+#piazza-ai-panel-close svg {
+  width: 18px;
+  height: 18px;
+  stroke: white;
+  stroke-width: 2;
+}
+
+/* Search Input Area */
+.piazza-ai-search-form {
+  display: flex;
+  gap: 10px;
+}
+
+.piazza-ai-search-input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+#piazza-ai-search-input {
+  width: 100%;
+  padding: 14px 16px;
+  padding-left: 44px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1a2e;
+  box-sizing: border-box;
+  outline: none;
+  transition: box-shadow 0.2s ease;
+}
+
+#piazza-ai-search-input::placeholder {
+  color: #9ca3af;
+}
+
+#piazza-ai-search-input:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.piazza-ai-search-input-wrapper svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  stroke: #9ca3af;
+  stroke-width: 2;
+  fill: none;
+}
+
+#piazza-ai-search-submit {
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  color: white;
   font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+#piazza-ai-search-submit:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+#piazza-ai-search-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Panel Body */
+.piazza-ai-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Empty State */
+.piazza-ai-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #9ca3af;
+  padding: 40px;
+}
+
+.piazza-ai-empty-state svg {
+  width: 80px;
+  height: 80px;
+  stroke: #d1d5db;
+  stroke-width: 1;
+  fill: none;
+  margin-bottom: 20px;
+}
+
+.piazza-ai-empty-state h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.piazza-ai-empty-state p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Loading State */
+.piazza-ai-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+}
+
+.piazza-ai-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #f97316;
+  border-radius: 50%;
+  animation: piazza-ai-spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes piazza-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.piazza-ai-loading-text {
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.piazza-ai-loading-subtext {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+/* Error State */
+.piazza-ai-error-state {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.piazza-ai-error-state svg {
+  width: 24px;
+  height: 24px;
+  stroke: #dc2626;
+  stroke-width: 2;
+  fill: none;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.piazza-ai-error-content h4 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.piazza-ai-error-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
   line-height: 1.5;
 }
 
-.piazza-ai-status {
-  color: #666;
-  font-style: italic;
+/* Results */
+.piazza-ai-results {
+  animation: piazza-ai-fadeIn 0.3s ease;
 }
 
-.piazza-ai-error {
-  color: #d9534f;
+@keyframes piazza-ai-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Answer Section */
+.piazza-ai-answer-section {
+  margin-bottom: 24px;
+}
+
+.piazza-ai-answer-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ea580c;
+}
+
+.piazza-ai-answer-label svg {
+  width: 16px;
+  height: 16px;
+  fill: #ea580c;
 }
 
 .piazza-ai-answer {
-  margin-bottom: 15px;
-  color: #333;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.piazza-ai-answer p {
+  margin: 0 0 12px 0;
+}
+
+.piazza-ai-answer p:last-child {
+  margin-bottom: 0;
 }
 
 .piazza-ai-answer ul,
 .piazza-ai-answer ol {
-  margin: 10px 0;
-  padding-left: 25px;
+  margin: 12px 0;
+  padding-left: 24px;
   list-style: initial;
 }
 
 .piazza-ai-answer li {
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   display: list-item;
 }
 
-.piazza-ai-answer p {
-  margin: 10px 0;
-}
-
-.piazza-ai-sources h4 {
-  margin: 0 0 5px 0;
-  font-size: 14px;
-  color: #555;
-}
-
-.piazza-ai-sources ul {
-  margin: 0;
-  padding-left: 20px;
-}
-
-.piazza-ai-sources li {
-  margin-bottom: 3px;
-}
-
-.piazza-ai-sources a {
-  color: #007bff;
-  text-decoration: none;
-}
-
-.piazza-ai-sources a:hover {
-  text-decoration: underline;
-}
-
-.piazza-ai-meta {
-  margin-top: 15px;
-  font-size: 11px;
-  color: #999;
-  text-align: right;
-}
-
-#piazza-ai-search-btn {
-  background-color: #3e7aab;
-  color: white;
-  border: none;
-  padding: 5px 10px;
+.piazza-ai-answer code {
+  background: #e5e7eb;
+  padding: 2px 6px;
   border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
+  font-size: 13px;
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
 }
 
-#piazza-ai-search-btn:hover {
-  background-color: #2d5a7e;
+.piazza-ai-answer pre {
+  background: #1a1a2e;
+  color: #e5e7eb;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.piazza-ai-answer pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.piazza-ai-answer strong {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Sources Section */
+.piazza-ai-sources-section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.piazza-ai-sources-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
+
+.piazza-ai-sources-label svg {
+  width: 16px;
+  height: 16px;
+  stroke: #6b7280;
+  stroke-width: 2;
+  fill: none;
+}
+
+.piazza-ai-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.piazza-ai-source-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.piazza-ai-source-item:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  transform: translateX(4px);
+}
+
+.piazza-ai-source-number {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  color: white;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.piazza-ai-source-title {
+  flex: 1;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.piazza-ai-source-arrow {
+  width: 16px;
+  height: 16px;
+  stroke: #9ca3af;
+  stroke-width: 2;
+  fill: none;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.piazza-ai-source-item:hover .piazza-ai-source-arrow {
+  transform: translateX(3px);
+  stroke: #f97316;
+}
+
+/* Meta Footer */
+.piazza-ai-meta {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.piazza-ai-meta-provider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.piazza-ai-meta-provider svg {
+  width: 14px;
+  height: 14px;
+  fill: #9ca3af;
+}
+
+/* Panel Backdrop */
+#piazza-ai-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+#piazza-ai-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+  #piazza-ai-panel {
+    width: 100%;
+    right: -100%;
+  }
+
+  #piazza-ai-fab {
+    bottom: 16px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Keyboard Shortcut Hint */
+.piazza-ai-kbd-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 12px;
+}
+
+.piazza-ai-kbd {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: "SF Mono", Monaco, monospace;
+  font-size: 11px;
 }

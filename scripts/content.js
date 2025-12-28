@@ -1,6 +1,9 @@
 (function () {
   const extensionApi = typeof browser !== "undefined" ? browser : chrome;
-  let aiSearchContainer = null;
+  const templates = window.PiazzaAITemplates;
+  let aiPanel = null;
+  let aiBackdrop = null;
+  let isSearching = false;
 
   function ensureRenderersLoaded() {
     if (window.marked && !window.__piazzaAiMarkedInitialized) {
@@ -77,39 +80,91 @@
     return new Promise((resolve) => extensionApi.runtime.sendMessage(message, resolve));
   }
 
-  function injectAiSearch() {
-    if (document.getElementById("piazza-ai-search-btn")) return;
+  function injectAiSearchFAB() {
+    if (document.getElementById("piazza-ai-fab")) return;
 
-    // Use the confirmed ID for the search bar container
-    const searchBar = document.getElementById("feed_search_bar");
-    if (!searchBar) return;
+    // Create backdrop
+    aiBackdrop = document.createElement("div");
+    aiBackdrop.id = "piazza-ai-backdrop";
+    document.body.appendChild(aiBackdrop);
 
-    const btn = document.createElement("button");
-    btn.id = "piazza-ai-search-btn";
-    btn.innerText = "AI Search";
-    btn.className = "btn btn-primary btn-sm";
-    btn.style.marginLeft = "10px";
-    btn.style.verticalAlign = "middle";
+    // Create FAB (Floating Action Button)
+    const fab = document.createElement("button");
+    fab.id = "piazza-ai-fab";
+    fab.innerHTML = templates.fab();
+    fab.onclick = () => openAiPanel();
+    document.body.appendChild(fab);
 
-    btn.onclick = (e) => {
+    // Create Panel
+    aiPanel = document.createElement("div");
+    aiPanel.id = "piazza-ai-panel";
+    aiPanel.innerHTML = templates.panel(templates.emptyState());
+    document.body.appendChild(aiPanel);
+
+    // Event Listeners
+    document.getElementById("piazza-ai-panel-close").onclick = closeAiPanel;
+    aiBackdrop.onclick = closeAiPanel;
+
+    document.getElementById("piazza-ai-search-form").onsubmit = (e) => {
       e.preventDefault();
-      const input = searchBar.querySelector("input");
-      const query = input ? input.value.trim() : "";
-
-      if (query) {
+      const input = document.getElementById("piazza-ai-search-input");
+      const query = input.value.trim();
+      if (query && !isSearching) {
         performAiSearch(query);
-      } else {
-        alert("Please enter a search query in the search bar first.");
       }
     };
 
-    searchBar.appendChild(btn);
+    // Keyboard shortcut: Cmd/Ctrl + K
+    document.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        if (aiPanel.classList.contains("open")) {
+          closeAiPanel();
+        } else {
+          openAiPanel();
+        }
+      }
+      // Escape to close
+      if (e.key === "Escape" && aiPanel.classList.contains("open")) {
+        closeAiPanel();
+      }
+    });
+  }
+
+  function openAiPanel() {
+    aiPanel.classList.add("open");
+    aiBackdrop.classList.add("visible");
+    document.getElementById("piazza-ai-fab").style.display = "none";
+
+    // Focus input after animation
+    setTimeout(() => {
+      document.getElementById("piazza-ai-search-input").focus();
+    }, 100);
+  }
+
+  function closeAiPanel() {
+    aiPanel.classList.remove("open");
+    aiBackdrop.classList.remove("visible");
+    document.getElementById("piazza-ai-fab").style.display = "flex";
+  }
+
+  function setSearching(searching) {
+    isSearching = searching;
+    const submitBtn = document.getElementById("piazza-ai-search-submit");
+    const input = document.getElementById("piazza-ai-search-input");
+    if (submitBtn) {
+      submitBtn.disabled = searching;
+      submitBtn.textContent = searching ? "Searching..." : "Search";
+    }
+    if (input) {
+      input.disabled = searching;
+    }
   }
 
   async function performAiSearch(query) {
     const nid = rememberCurrentNid();
     if (!nid) {
-      alert("Could not determine class ID. Are you on a class page?");
+      showError("Could not determine class ID. Are you on a class page?");
       return;
     }
 
@@ -117,114 +172,97 @@
     const parsedTopK = Number(stored.topK);
     const topK = parsedTopK > 0 ? parsedTopK : undefined;
 
-    showResultsOverlay();
-    setOverlayStatus("Searching Piazza and generating AI answer...");
+    setSearching(true);
+    showLoading();
 
     sendExtensionMessage({
       type: "AI_SEARCH",
       payload: { query, nid, topK },
     })
       .then(async (response) => {
+        setSearching(false);
         if (response && response.error) {
-          setOverlayError(response.error);
+          showError(response.error);
         } else {
           await displayResults(response);
         }
       })
       .catch((error) => {
-        setOverlayError(error && error.message ? error.message : String(error));
+        setSearching(false);
+        showError(error && error.message ? error.message : String(error));
       });
   }
 
-  function showResultsOverlay() {
-    if (aiSearchContainer) aiSearchContainer.remove();
-
-    aiSearchContainer = document.createElement("div");
-    aiSearchContainer.id = "piazza-ai-results-overlay";
-    aiSearchContainer.innerHTML = `
-      <div class="piazza-ai-header">
-        <h3>AI Search Results</h3>
-        <button id="piazza-ai-close">&times;</button>
-      </div>
-      <div id="piazza-ai-content">
-        <div class="piazza-ai-status"></div>
-      </div>
-    `;
-    document.body.appendChild(aiSearchContainer);
-
-    document.getElementById("piazza-ai-close").onclick = () => {
-      aiSearchContainer.remove();
-      aiSearchContainer = null;
-    };
-  }
-
-  function setOverlayStatus(status) {
-    const content = document.getElementById("piazza-ai-content");
-    if (content) {
-      content.innerHTML = `<div class="piazza-ai-status">${status}</div>`;
+  function showLoading() {
+    const body = document.getElementById("piazza-ai-panel-body");
+    if (body) {
+      body.innerHTML = templates.loading();
     }
   }
 
-  function setOverlayError(error) {
-    const content = document.getElementById("piazza-ai-content");
-    if (content) {
-      content.innerHTML = `<div class="piazza-ai-error">Error: ${error}</div>`;
+  function showError(error) {
+    const body = document.getElementById("piazza-ai-panel-body");
+    if (body) {
+      body.innerHTML = templates.error(error);
     }
   }
 
   async function displayResults(data) {
-    const content = document.getElementById("piazza-ai-content");
-    if (!content) return;
+    const body = document.getElementById("piazza-ai-panel-body");
+    if (!body) return;
 
     if (!data || !data.answer) {
-      setOverlayError("No response received from the background worker.");
+      showError("No response received from the background worker.");
       return;
     }
 
     const sources = Array.isArray(data.sources) ? data.sources : [];
-    content.innerHTML = "";
+
+    // Build results HTML
+    const resultsContainer = document.createElement("div");
+    resultsContainer.className = "piazza-ai-results";
+
+    // Answer section
+    const answerSection = document.createElement("div");
+    answerSection.className = "piazza-ai-answer-section";
+    answerSection.innerHTML = templates.answerLabel();
 
     const answerElement = await renderMarkdownAnswer(String(data.answer));
-    content.appendChild(answerElement);
+    answerSection.appendChild(answerElement);
+    resultsContainer.appendChild(answerSection);
 
+    // Sources section
     if (sources.length) {
-      const sourcesContainer = document.createElement("div");
-      sourcesContainer.className = "piazza-ai-sources";
-
-      const heading = document.createElement("h4");
-      heading.textContent = "Sources:";
-      sourcesContainer.appendChild(heading);
-
-      const list = document.createElement("ul");
-      sources.forEach((source) => {
-        const listItem = document.createElement("li");
-        const link = document.createElement("a");
-        link.href = source.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = source.subject;
-        listItem.appendChild(link);
-        list.appendChild(listItem);
-      });
-
-      sourcesContainer.appendChild(list);
-      content.appendChild(sourcesContainer);
+      const sourcesSection = document.createElement("div");
+      sourcesSection.className = "piazza-ai-sources-section";
+      sourcesSection.innerHTML = templates.sources(sources, escapeHtml);
+      resultsContainer.appendChild(sourcesSection);
     }
 
+    // Meta section
     if (data.meta && data.meta.provider && data.meta.model) {
       const meta = document.createElement("div");
       meta.className = "piazza-ai-meta";
-      meta.textContent = `Generated by ${data.meta.provider} (${data.meta.model})`;
-      content.appendChild(meta);
+      meta.innerHTML = templates.meta(data.meta.provider, data.meta.model);
+      resultsContainer.appendChild(meta);
     }
+
+    body.innerHTML = "";
+    body.appendChild(resultsContainer);
   }
 
-  // Watch for DOM changes to inject the button
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Watch for DOM changes to inject the FAB
   const observer = new MutationObserver(() => {
-    injectAiSearch();
+    injectAiSearchFAB();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-  injectAiSearch();
+  injectAiSearchFAB();
   rememberCurrentNid();
 })();

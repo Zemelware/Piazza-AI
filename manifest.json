@@ -24,6 +24,7 @@
         "lib/marked.min.js",
         "lib/katex.min.js",
         "lib/auto-render.min.js",
+        "scripts/templates.js",
         "scripts/content.js"
       ],
       "css": ["lib/katex.min.css", "styles/content.css"]
