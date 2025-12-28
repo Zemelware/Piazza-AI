@@ -75,6 +75,7 @@ You can call the tool multiple times with different keywords if needed, but you 
   - Use $$...$$ for block math on its own line.
   - Do not use other delimiters like \( \) or \[ \].
 - You may also use markdown formatting.
+- Cite every source you use in your answer using in-text citations with the format [source:N], where N is the source_number attribute from the <post> tags (e.g., [source:1], [source:2]). You may cite multiple sources together like [source:1][source:3].
 Once you have enough information, provide a concise and helpful answer. If you cannot find the answer, explain what is missing.`.trim(),
     },
     { role: "user", content: `Query:\n${query}` },
@@ -115,9 +116,20 @@ Once you have enough information, provide a concise and helpful answer. If you c
         const args = JSON.parse(toolCall.function.arguments);
         const { posts, sources } = await searchCallback(args.keywords);
 
-        sources.forEach((s) => allSources.set(s.id, s));
+        sources.forEach((s) => {
+          if (!allSources.has(s.id)) {
+            allSources.set(s.id, s);
+          }
+        });
 
-        const contextBlocks = posts.map((post) => extractPostContent(post)).filter(Boolean);
+        const sourceIds = Array.from(allSources.keys());
+        const contextBlocks = posts
+          .map((post) => {
+            const sourceIndex = sourceIds.indexOf(post.id);
+            const sourceNumber = sourceIndex !== -1 ? sourceIndex + 1 : undefined;
+            return extractPostContent(post, sourceNumber);
+          })
+          .filter(Boolean);
 
         let context = contextBlocks.join("\n");
         context = truncateContext(context, 18000);

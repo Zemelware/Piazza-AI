@@ -18,7 +18,12 @@
   async function renderMarkdownAnswer(answer) {
     try {
       await ensureRenderersLoaded();
-      const html = window.marked ? window.marked.parse(answer) : answer;
+      let html = window.marked ? window.marked.parse(answer) : answer;
+
+      // Replace [source:N] citations with clickable links
+      html = html.replace(/\[source:(\d+)\]/g, (match, number) => {
+        return `<a href="#piazza-ai-source-${number}" class="piazza-ai-citation">${number}</a>`;
+      });
 
       const wrapper = document.createElement("div");
       wrapper.className = "piazza-ai-answer";

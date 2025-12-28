@@ -30,7 +30,7 @@ function buildAttrs(attrs) {
 }
 
 function getLatestHistory(history) {
-  return history && history[0]
+  return history && history[0];
 }
 
 function getLatestHistoryText(history) {
@@ -38,13 +38,17 @@ function getLatestHistoryText(history) {
   return latest ? stripHtml(latest.content) : "";
 }
 
-export function extractPostContent(post) {
+export function extractPostContent(post, sourceNumber) {
   const parts = [];
   const latestPostHistory = getLatestHistory(post.history);
   const subject = latestPostHistory?.subject;
   const postDate = post.created || latestPostHistory?.created;
 
-  parts.push(`<post${buildAttrs({ id: post.id, date: postDate, subject: subject })}>`);
+  const attrs = { id: post.id, date: postDate, subject: subject };
+  if (sourceNumber !== undefined) {
+    attrs.source_number = sourceNumber;
+  }
+  parts.push(`<post${buildAttrs(attrs)}>`);
 
   const questionText = getLatestHistoryText(post.history);
   if (questionText) {
