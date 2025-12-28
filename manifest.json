@@ -4,8 +4,7 @@
   "version": "0.1.0",
   "description": "Search Piazza posts with AI assistance.",
   "action": {
-    "default_title": "Piazza AI",
-    "default_popup": "pages/popup.html"
+    "default_title": "Piazza AI"
   },
   "options_ui": {
     "page": "pages/options.html",

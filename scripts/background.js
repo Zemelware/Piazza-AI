@@ -4,6 +4,10 @@ import { generateAnswer } from "./llmService.js";
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
 const DEFAULT_TOPK = 10;
 
+extensionApi.action.onClicked.addListener(() => {
+  extensionApi.runtime.openOptionsPage();
+});
+
 extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "AI_SEARCH") {
     handleAiSearch(request.payload)
@@ -14,11 +18,7 @@ extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleAiSearch({ query, nid, topK }) {
-  const settings = await extensionApi.storage.local.get([
-    "apiKey",
-    "model",
-    "topK",
-  ]);
+  const settings = await extensionApi.storage.local.get(["apiKey", "model", "topK"]);
 
   if (nid) {
     try {
@@ -37,9 +37,7 @@ async function handleAiSearch({ query, nid, topK }) {
   const searchCallback = async (keywords) => {
     const searchResults = await searchPosts(keywords, nid);
     // Don't include posts with no answers
-    const answeredResults = searchResults.filter(
-      (item) => item && item.no_answer === 0,
-    );
+    const answeredResults = searchResults.filter((item) => item && item.no_answer === 0);
     const limitedPostIds = answeredResults
       .map((item) => item.id)
       .filter(Boolean)
@@ -53,7 +51,7 @@ async function handleAiSearch({ query, nid, topK }) {
 
     console.log("Posts:");
     console.log(posts);
-    
+
     const sources = posts.map((post) => ({
       id: post.id,
       subject: post.history[0]?.subject || "Untitled",
