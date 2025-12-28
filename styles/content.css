@@ -6,10 +6,10 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +19,7 @@
 
 #piazza-ai-fab:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 24px rgba(249, 115, 22, 0.5);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
 }
 
 #piazza-ai-fab:active {
@@ -75,7 +75,7 @@
 /* Panel Header */
 .piazza-ai-panel-header {
   padding: 20px 24px;
-  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
   color: white;
   flex-shrink: 0;
 }
