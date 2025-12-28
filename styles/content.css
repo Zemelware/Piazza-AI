@@ -253,7 +253,7 @@
   width: 48px;
   height: 48px;
   border: 3px solid #e5e7eb;
-  border-top-color: #f97316;
+  border-top-color: #6366f1;
   border-radius: 50%;
   animation: piazza-ai-spin 0.8s linear infinite;
   margin-bottom: 20px;
@@ -342,13 +342,13 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #ea580c;
+  color: #6366f1;
 }
 
 .piazza-ai-answer-label svg {
   width: 16px;
   height: 16px;
-  fill: #ea580c;
+  fill: #6366f1;
 }
 
 .piazza-ai-answer {
@@ -485,7 +485,7 @@
 .piazza-ai-source-number {
   width: 24px;
   height: 24px;
-  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
   color: white;
   border-radius: 6px;
   display: flex;
@@ -521,7 +521,7 @@
 
 .piazza-ai-source-item:hover .piazza-ai-source-arrow {
   transform: translateX(3px);
-  stroke: #f97316;
+  stroke: #6366f1;
 }
 
 /* Meta Footer */
