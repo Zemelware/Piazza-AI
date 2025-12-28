@@ -63,6 +63,22 @@
   color: #333;
 }
 
+.piazza-ai-answer ul,
+.piazza-ai-answer ol {
+  margin: 10px 0;
+  padding-left: 25px;
+  list-style: initial;
+}
+
+.piazza-ai-answer li {
+  margin-bottom: 5px;
+  display: list-item;
+}
+
+.piazza-ai-answer p {
+  margin: 10px 0;
+}
+
 .piazza-ai-sources h4 {
   margin: 0 0 5px 0;
   font-size: 14px;

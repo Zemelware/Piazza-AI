@@ -1,77 +1,15 @@
 (function () {
   const extensionApi = typeof browser !== "undefined" ? browser : chrome;
   let aiSearchContainer = null;
-  const assetPromises = {};
 
-  const externalAssets = {
-    marked: {
-      type: "script",
-      url: "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js",
-    },
-    katex: {
-      type: "script",
-      url: "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js",
-    },
-    katexAutoRender: {
-      type: "script",
-      url: "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js",
-    },
-    katexStyles: {
-      type: "style",
-      url: "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
-    },
-  };
-
-  function loadExternalAsset(key) {
-    if (assetPromises[key]) return assetPromises[key];
-
-    const asset = externalAssets[key];
-    if (!asset) return Promise.reject(new Error(`Unknown asset: ${key}`));
-
-    assetPromises[key] = new Promise((resolve, reject) => {
-      let element;
-
-      if (asset.type === "script") {
-        element = document.createElement("script");
-        element.src = asset.url;
-        element.async = true;
-      } else if (asset.type === "style") {
-        element = document.createElement("link");
-        element.rel = "stylesheet";
-        element.href = asset.url;
-      }
-
-      if (!element) {
-        reject(new Error(`Unsupported asset type: ${asset.type}`));
-        return;
-      }
-
-      element.onload = () => resolve();
-      element.onerror = () => reject(new Error(`Failed to load ${asset.url}`));
-
-      (document.head || document.documentElement).appendChild(element);
-    });
-
-    return assetPromises[key];
-  }
-
-  async function ensureRenderersLoaded() {
-    await Promise.all([
-      loadExternalAsset("marked"),
-      loadExternalAsset("katex"),
-      loadExternalAsset("katexAutoRender"),
-      loadExternalAsset("katexStyles"),
-    ]);
-
+  function ensureRenderersLoaded() {
     if (window.marked && !window.__piazzaAiMarkedInitialized) {
       window.marked.setOptions({
         gfm: true,
-        breaks: true,
-        mangle: false,
-        headerIds: false,
       });
       window.__piazzaAiMarkedInitialized = true;
     }
+    return Promise.resolve();
   }
 
   async function renderMarkdownAnswer(answer) {
