@@ -36,36 +36,74 @@
     return new Promise((resolve) => extensionApi.runtime.sendMessage(message, resolve));
   }
 
-  function injectAiSearch() {
-    if (document.getElementById("piazza-ai-search-btn")) return;
+  function injectAiExperience() {
+    if (document.getElementById("piazza-ai-entry")) return;
 
-    // Use the confirmed ID for the search bar container
     const searchBar = document.getElementById("feed_search_bar");
-    if (!searchBar) return;
+    const target = searchBar ? searchBar.parentElement : null;
+    if (!target) return;
 
-    const btn = document.createElement("button");
-    btn.id = "piazza-ai-search-btn";
-    btn.innerText = "AI Search";
-    btn.className = "btn btn-primary btn-sm";
-    btn.style.marginLeft = "10px";
-    btn.style.verticalAlign = "middle";
+    const entry = document.createElement("div");
+    entry.id = "piazza-ai-entry";
+    entry.innerHTML = `
+      <div class="piazza-ai-entry-body">
+        <div class="piazza-ai-entry-eyebrow">Natural language</div>
+        <div class="piazza-ai-entry-title">AI search for this class</div>
+        <p class="piazza-ai-entry-copy">Describe what you need and get summarized answers with links back to Piazza.</p>
+        <div class="piazza-ai-entry-actions">
+          <button id="piazza-ai-launch" class="piazza-ai-primary">Open AI search</button>
+          <div class="piazza-ai-entry-chips">
+            <button type="button" class="piazza-ai-chip-button" data-value="Summarize the latest announcements for this class.">Announcements</button>
+            <button type="button" class="piazza-ai-chip-button" data-value="What are the most common unresolved questions right now?">Unresolved</button>
+            <button type="button" class="piazza-ai-chip-button" data-value="Explain the key takeaways from the most recent lectures.">Lecture recap</button>
+          </div>
+        </div>
+      </div>
+      <div class="piazza-ai-entry-visual">
+        <div class="piazza-ai-blob"></div>
+        <div class="piazza-ai-stars">
+          <span>✦</span><span>✧</span><span>✦</span>
+        </div>
+      </div>
+    `;
 
-    btn.onclick = (e) => {
-      e.preventDefault();
-      const input = searchBar.querySelector("input");
-      const query = input ? input.value.trim() : "";
+    searchBar.insertAdjacentElement("afterend", entry);
 
-      if (query) {
-        performAiSearch(query);
-      } else {
-        alert("Please enter a search query in the search bar first.");
+    const launchButton = entry.querySelector("#piazza-ai-launch");
+    if (launchButton) {
+      launchButton.addEventListener("click", () => openAiOverlay());
+    }
+
+    entry.querySelectorAll(".piazza-ai-chip-button").forEach((chip) => {
+      chip.addEventListener("click", () => openAiOverlay(chip.dataset.value || ""));
+    });
+  }
+
+  function openAiOverlay(presetQuery = "") {
+    renderResultsOverlay();
+
+    const input = document.getElementById("piazza-ai-query");
+    if (input) {
+      if (presetQuery) {
+        input.value = presetQuery;
       }
-    };
-
-    searchBar.appendChild(btn);
+      input.focus();
+    }
   }
 
   async function performAiSearch(query) {
+    renderResultsOverlay();
+    const textArea = document.getElementById("piazza-ai-query");
+    if (textArea) {
+      textArea.value = query;
+    }
+
+    const preparedQuery = (query || "").trim();
+    if (!preparedQuery) {
+      setOverlayError("Please enter a natural language question for AI search.");
+      return;
+    }
+
     const nid = rememberCurrentNid();
     if (!nid) {
       alert("Could not determine class ID. Are you on a class page?");
@@ -76,12 +114,11 @@
     const parsedTopK = Number(stored.topK);
     const topK = parsedTopK > 0 ? parsedTopK : undefined;
 
-    showResultsOverlay();
     setOverlayStatus("Searching Piazza and generating AI answer...");
 
     sendExtensionMessage({
       type: "AI_SEARCH",
-      payload: { query, nid, topK },
+      payload: { query: preparedQuery, nid, topK },
     })
       .then((response) => {
         if (response && response.error) {
@@ -95,26 +132,85 @@
       });
   }
 
-  function showResultsOverlay() {
-    if (aiSearchContainer) aiSearchContainer.remove();
+  function renderResultsOverlay() {
+    if (aiSearchContainer) return;
 
     aiSearchContainer = document.createElement("div");
     aiSearchContainer.id = "piazza-ai-results-overlay";
     aiSearchContainer.innerHTML = `
+      <div class="piazza-ai-close-wrap">
+        <button id="piazza-ai-close" aria-label="Close AI search overlay">&times;</button>
+      </div>
+      <div class="piazza-ai-hero">
+        <div class="piazza-ai-badge">AI-powered</div>
+        <h3>Ask in natural language</h3>
+        <p>Research Piazza posts, announcements, and answers without keywords. We will cite the most relevant threads.</p>
+      </div>
+      <form id="piazza-ai-form" class="piazza-ai-form">
+        <label class="sr-only" for="piazza-ai-query">AI search input</label>
+        <div class="piazza-ai-input-shell">
+          <textarea id="piazza-ai-query" rows="3" placeholder="Ask in natural language: What did I miss in last week's lecture?"></textarea>
+          <div class="piazza-ai-form-actions">
+            <span class="piazza-ai-hint">Shift + Enter for a new line</span>
+            <div class="piazza-ai-action-buttons">
+              <button type="button" id="piazza-ai-clear" class="piazza-ai-btn ghost">Clear</button>
+              <button type="submit" class="piazza-ai-btn primary">Search with AI</button>
+            </div>
+          </div>
+        </div>
+      </form>
+      <div class="piazza-ai-chip-row">
+        <button type="button" class="piazza-ai-chip" data-value="Summarize the most important threads this week and include links.">Weekly digest</button>
+        <button type="button" class="piazza-ai-chip" data-value="List unresolved questions about the current assignment.">Unresolved questions</button>
+        <button type="button" class="piazza-ai-chip" data-value="Give me study notes based on the latest Piazza discussions.">Study notes</button>
+      </div>
       <div class="piazza-ai-header">
-        <h3>AI Search Results</h3>
-        <button id="piazza-ai-close">&times;</button>
+        <div>
+          <div class="piazza-ai-eyebrow">AI search results</div>
+          <h3>We will include citations back to Piazza</h3>
+        </div>
       </div>
       <div id="piazza-ai-content">
-        <div class="piazza-ai-status"></div>
+        <div class="piazza-ai-status">Ask a question to see AI-powered answers.</div>
       </div>
     `;
     document.body.appendChild(aiSearchContainer);
 
-    document.getElementById("piazza-ai-close").onclick = () => {
-      aiSearchContainer.remove();
-      aiSearchContainer = null;
-    };
+    const closeBtn = document.getElementById("piazza-ai-close");
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        aiSearchContainer.remove();
+        aiSearchContainer = null;
+      };
+    }
+
+    const form = document.getElementById("piazza-ai-form");
+    const input = document.getElementById("piazza-ai-query");
+    const clear = document.getElementById("piazza-ai-clear");
+
+    if (form && input) {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        performAiSearch(input.value);
+      });
+    }
+
+    if (clear && input) {
+      clear.addEventListener("click", () => {
+        input.value = "";
+        setOverlayStatus("Ask a question to see AI-powered answers.");
+        input.focus();
+      });
+    }
+
+    aiSearchContainer.querySelectorAll(".piazza-ai-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        if (input) {
+          input.value = chip.dataset.value || "";
+          input.focus();
+        }
+      });
+    });
   }
 
   function setOverlayStatus(status) {
@@ -169,12 +265,12 @@
     `;
   }
 
-  // Watch for DOM changes to inject the button
+  // Watch for DOM changes to inject the AI search entry point
   const observer = new MutationObserver(() => {
-    injectAiSearch();
+    injectAiExperience();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-  injectAiSearch();
+  injectAiExperience();
   rememberCurrentNid();
 })();
