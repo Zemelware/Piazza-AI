@@ -10,22 +10,38 @@
     <div class="page">
       <header>
         <h1>Piazza AI Settings</h1>
-        <p>Configure your xAI API settings.</p>
+        <p>Configure your AI model provider settings.</p>
       </header>
 
       <form id="options-form">
         <section>
-          <h2>xAI Settings</h2>
+          <h2>AI Settings</h2>
           <div class="grid">
             <div>
-              <label for="model">Model (optional)</label>
-              <input id="model" type="text" placeholder="Leave blank for default" />
+              <label for="provider">Model Provider</label>
+              <select id="provider"></select>
             </div>
+            <div>
+              <label for="model">Model</label>
+              <select id="model">
+                <option value="">Default</option>
+              </select>
+            </div>
+          </div>
+          <div id="customModelRow" class="hidden">
+            <label for="customModel">Custom model ID</label>
+            <input id="customModel" type="text" placeholder="e.g., gpt-5.2" required />
+            <p class="helper-text">Use the exact model ID if it is not listed above.</p>
           </div>
 
           <div class="grid">
             <div>
-              <label for="apiKey">xAI API key</label>
+              <label for="apiKey"
+                >API Key
+                <a id="apiKeyLink" href="#" target="_blank" class="api-key-link"
+                  >(Get one here)</a
+                ></label
+              >
               <input id="apiKey" type="password" placeholder="Enter your API key" required />
             </div>
             <div>
@@ -42,6 +58,6 @@
       </form>
     </div>
 
-    <script src="../scripts/options.js"></script>
+    <script src="../scripts/options.js" type="module"></script>
   </body>
 </html>

@@ -18,7 +18,7 @@ extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleAiSearch({ query, nid, topK }) {
-  const settings = await extensionApi.storage.local.get(["apiKey", "model", "topK"]);
+  const settings = await extensionApi.storage.local.get(["apiKeys", "model", "topK", "provider"]);
 
   if (nid) {
     try {
