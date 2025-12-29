@@ -1,5 +1,6 @@
 import { searchPosts, getPost } from "./piazzaService.js";
 import { generateAnswer } from "./llmService.js";
+import { decodeHtmlEntities } from "./utils.js";
 
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
 const DEFAULT_MAX_SEARCH_RESULTS = 10;
@@ -61,7 +62,7 @@ async function handleAiSearch({ query, nid, maxSearchResults }) {
 
     const sources = posts.map((post) => ({
       id: post.id,
-      subject: post.history[0]?.subject || "Untitled",
+      subject: decodeHtmlEntities(post.history[0]?.subject || "Untitled"),
       url: `https://piazza.com/class/${nid}?cid=${post.id}`,
     }));
 

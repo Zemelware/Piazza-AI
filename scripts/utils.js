@@ -1,16 +1,23 @@
-export function stripHtml(html) {
-  if (!html) return "";
-  // Simple regex-based HTML stripping for service worker
-  let text = html.replace(/<[^>]+>/g, " ");
-  // Basic entity decoding
-  text = text
+export function decodeHtmlEntities(text) {
+  if (!text) return "";
+  return text
     .replace(/&nbsp;/g, " ")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-  return text.replace(/\s+/g, " ").trim();
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);?/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-f]+);?/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+export function stripHtml(html) {
+  if (!html) return "";
+  // Simple regex-based HTML stripping for service worker
+  let text = html.replace(/<[^>]+>/g, " ");
+  // Basic entity decoding
+  return decodeHtmlEntities(text).replace(/\s+/g, " ").trim();
 }
 
 function escapeXml(value) {
@@ -41,7 +48,7 @@ function getLatestHistoryText(history) {
 export function extractPostContent(post, sourceNumber) {
   const parts = [];
   const latestPostHistory = getLatestHistory(post.history);
-  const subject = latestPostHistory?.subject;
+  const subject = decodeHtmlEntities(latestPostHistory?.subject);
   const postDate = post.created || latestPostHistory?.created;
 
   const attrs = { id: post.id, date: postDate, subject: subject };
