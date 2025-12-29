@@ -34,6 +34,7 @@ const PiazzaAITemplates = {
   // Main Panel
   panel(emptyStateHTML) {
     return `
+      <div id="piazza-ai-resize-handle"></div>
       <div class="piazza-ai-panel-header">
         <div class="piazza-ai-panel-header-top">
           <div class="piazza-ai-panel-title">

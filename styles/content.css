@@ -56,8 +56,10 @@
 #piazza-ai-panel {
   position: fixed;
   top: 0;
-  right: -480px;
+  right: -100%;
   width: 460px;
+  min-width: 320px;
+  max-width: 90vw;
   height: 100vh;
   background: #ffffff;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
@@ -70,6 +72,87 @@
 
 #piazza-ai-panel.open {
   right: 0;
+}
+
+#piazza-ai-resize-handle {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#piazza-ai-resize-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 48px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0);
+  transition: background 0.2s ease, height 0.2s ease, box-shadow 0.2s ease;
+}
+
+#piazza-ai-resize-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 24px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(99, 102, 241, 0) 3px,
+    rgba(99, 102, 241, 0) 6px
+  );
+  border-radius: 1px;
+  transition: background 0.2s ease, height 0.2s ease;
+}
+
+#piazza-ai-resize-handle:hover::before,
+#piazza-ai-resize-handle.resizing::before {
+  background: rgba(99, 102, 241, 0.15);
+  height: 64px;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+}
+
+#piazza-ai-resize-handle:hover::after,
+#piazza-ai-resize-handle.resizing::after {
+  height: 32px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(99, 102, 241, 0.6) 3px,
+    rgba(99, 102, 241, 0.6) 6px
+  );
+}
+
+#piazza-ai-resize-handle.resizing::before {
+  background: rgba(99, 102, 241, 0.25);
+  height: 80px;
+}
+
+#piazza-ai-resize-handle.resizing::after {
+  height: 40px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(99, 102, 241, 0.8) 3px,
+    rgba(99, 102, 241, 0.8) 6px
+  );
 }
 
 /* Panel Header */

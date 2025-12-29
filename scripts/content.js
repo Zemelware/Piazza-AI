@@ -77,6 +77,14 @@
     return new Promise((resolve) => extensionApi.storage.local.get(["maxSearchResults"], resolve));
   }
 
+  function getStoredPanelWidth() {
+    const result = extensionApi.storage.local.get(["panelWidth"]);
+    if (result && typeof result.then === "function") {
+      return result;
+    }
+    return new Promise((resolve) => extensionApi.storage.local.get(["panelWidth"], resolve));
+  }
+
   function sendExtensionMessage(message) {
     const result = extensionApi.runtime.sendMessage(message);
     if (result && typeof result.then === "function") {
@@ -105,6 +113,9 @@
     aiPanel.id = "piazza-ai-panel";
     aiPanel.innerHTML = templates.panel(templates.emptyState());
     document.body.appendChild(aiPanel);
+
+    // Initialize Resizer
+    initResizer();
 
     // Event Listeners
     document.getElementById("piazza-ai-panel-close").onclick = closeAiPanel;
@@ -136,8 +147,62 @@
     });
   }
 
+  function initResizer() {
+    const handle = document.getElementById("piazza-ai-resize-handle");
+    let isResizing = false;
+    let startX, startWidth;
+
+    // Load persisted width
+    getStoredPanelWidth().then((result) => {
+      if (result && result.panelWidth) {
+        const width = result.panelWidth;
+        aiPanel.style.width = `${width}px`;
+        if (!aiPanel.classList.contains("open")) {
+          aiPanel.style.right = `-${width + 20}px`;
+        }
+      }
+    });
+
+    handle.addEventListener("mousedown", (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = parseInt(document.defaultView.getComputedStyle(aiPanel).width, 10);
+      handle.classList.add("resizing");
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+
+      // Disable transition during resize for smoothness
+      aiPanel.style.transition = "none";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isResizing) return;
+      const width = startWidth + (startX - e.clientX);
+      if (width > 320 && width < window.innerWidth * 0.9) {
+        aiPanel.style.width = `${width}px`;
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isResizing) {
+        isResizing = false;
+        handle.classList.remove("resizing");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+
+        // Re-enable transition
+        aiPanel.style.transition = "";
+
+        // Persist width
+        const finalWidth = parseInt(aiPanel.style.width, 10);
+        extensionApi.storage.local.set({ panelWidth: finalWidth });
+      }
+    });
+  }
+
   function openAiPanel() {
     aiPanel.classList.add("open");
+    aiPanel.style.right = "0";
     aiBackdrop.classList.add("visible");
     document.getElementById("piazza-ai-fab").style.display = "none";
 
@@ -149,6 +214,8 @@
 
   function closeAiPanel() {
     aiPanel.classList.remove("open");
+    const width = parseInt(aiPanel.style.width, 10) || 460;
+    aiPanel.style.right = `-${width + 20}px`;
     aiBackdrop.classList.remove("visible");
     document.getElementById("piazza-ai-fab").style.display = "flex";
   }
