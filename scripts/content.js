@@ -117,7 +117,9 @@
         .map((fav) => {
           const displayName = `${fav.modelName} (${fav.providerName})`;
           const value = `${fav.providerId}:${fav.modelId}`;
-          return `<option value="${escapeHtml(value)}">${escapeHtml(displayName)}</option>`;
+          const escapedValue = escapeHtml(value);
+          const escapedDisplayName = escapeHtml(displayName);
+          return `<option value="${escapedValue}">${escapedDisplayName}</option>`;
         })
         .join("");
     
@@ -295,9 +297,11 @@
     const payload = { query, nid, maxSearchResults };
     
     // Add model override if selected
-    if (selectedModelOverride) {
+    if (selectedModelOverride && selectedModelOverride.includes(":")) {
       const [providerId, modelId] = selectedModelOverride.split(":");
-      payload.modelOverride = { providerId, modelId };
+      if (providerId && modelId) {
+        payload.modelOverride = { providerId, modelId };
+      }
     }
 
     sendExtensionMessage({
