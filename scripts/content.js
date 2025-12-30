@@ -115,7 +115,7 @@
     modelSelector.innerHTML = '<option value="">Default model</option>' +
       favouriteModels
         .map((fav) => {
-          const displayName = `${fav.modelName} (${fav.providerName})`;
+          const displayName = fav.modelName;
           const value = `${fav.providerId}:${fav.modelId}`;
           const escapedValue = escapeHtml(value);
           const escapedDisplayName = escapeHtml(displayName);
