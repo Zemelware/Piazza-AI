@@ -127,12 +127,6 @@
     });
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
   function sendExtensionMessage(message) {
     const result = extensionApi.runtime.sendMessage(message);
     if (result && typeof result.then === "function") {
