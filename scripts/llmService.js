@@ -31,13 +31,13 @@ const openaiChatAdapter = {
     return `${apiBase}/chat/completions`;
   },
 
-  buildTools(searchResultLimit) {
+  buildTools(searchResultLimit, includeFollowups) {
     return [
       {
         type: "function",
         function: {
           name: "search_piazza",
-          description: buildToolDescription(searchResultLimit),
+          description: buildToolDescription(searchResultLimit, includeFollowups),
           parameters: {
             type: "object",
             properties: {
@@ -116,13 +116,13 @@ const openaiResponsesAdapter = {
     return `${apiBase}/responses`;
   },
 
-  buildTools(searchResultLimit) {
+  buildTools(searchResultLimit, includeFollowups) {
     // Responses API uses internally-tagged function format
     return [
       {
         type: "function",
         name: "search_piazza",
-        description: buildToolDescription(searchResultLimit),
+        description: buildToolDescription(searchResultLimit, includeFollowups),
         parameters: {
           type: "object",
           properties: {
@@ -266,9 +266,10 @@ function getAdapter(apiStyle) {
 /**
  * Build the tool description for search_piazza.
  */
-function buildToolDescription(searchResultLimit) {
+function buildToolDescription(searchResultLimit, includeFollowups) {
+  const resultType = includeFollowups ? "relevant" : "answered";
   return `Search Piazza posts for information using keywords.
-Returns up to ${searchResultLimit} answered posts per call.
+Returns up to ${searchResultLimit} ${resultType} posts per call.
 Piazza is a Q&A platform where students can ask questions about their classes and instructors/students can provide answers.
 Supports advanced search operators:
 - Use spaces for AND (e.g., "office hours" matches both).
@@ -287,7 +288,8 @@ function buildSystemPrompt() {
 You can call the tool multiple times with different keywords if needed, but you have a limit of ${TOOL_ROUND_LIMIT} tool-call rounds and at most ${TOOL_CALLS_PER_ROUND_LIMIT} tool calls per round.
 - Prioritize the most recent, up-to-date posts when forming your answer.
 - Prefer using posts with instructor answers or instructor-endorsed answers if possible.
-- If only posts with student answers are available, use those, but indicate in your answer that the information came from a student.
+- You may also find relevant information in follow-up discussions and replies within posts.
+- If only posts with student answers or student follow-ups are available, use those, but indicate in your answer that the information came from a student.
 - If you need to use math in your response, use LaTeX syntax.
   - Use $...$ for inline math (e.g., $E=mc^2$).
   - Use $$...$$ for block math on its own line.
@@ -362,7 +364,7 @@ export async function generateAnswer(query, settings, searchCallback) {
   if (!apiKey) throw new Error(`Missing API key for ${provider.name}`);
   if (!model) throw new Error(`No model selected for ${provider.name}`);
   const apiUrl = adapter.buildUrl(provider);
-  const tools = adapter.buildTools(searchResultLimit);
+  const tools = adapter.buildTools(searchResultLimit, settings.includeFollowups);
   const systemPrompt = buildSystemPrompt();
   const request = adapter.buildInitialRequest(model, systemPrompt, query, tools);
 
@@ -417,7 +419,9 @@ export async function generateAnswer(query, settings, searchCallback) {
           .map((post) => {
             const sourceIndex = sourceIds.indexOf(post.id);
             const sourceNumber = sourceIndex !== -1 ? sourceIndex + 1 : undefined;
-            return extractPostContent(post, sourceNumber);
+            return extractPostContent(post, sourceNumber, {
+              includeFollowups: settings.includeFollowups,
+            });
           })
           .filter(Boolean);
 
@@ -458,6 +462,7 @@ export async function generateAnswer(query, settings, searchCallback) {
     finalAnswer = request._lastContent;
   }
 
+  console.log(request.messages);
   console.log(`final answer: ${finalAnswer}`);
 
   if (!finalAnswer) throw new Error("AI request returned no text output.");

@@ -45,7 +45,7 @@ function getLatestHistoryText(history) {
   return latest ? stripHtml(latest.content) : "";
 }
 
-export function extractPostContent(post, sourceNumber) {
+export function extractPostContent(post, sourceNumber, options = {}) {
   const parts = [];
   const latestPostHistory = getLatestHistory(post.history);
   const subject = decodeHtmlEntities(latestPostHistory?.subject);
@@ -67,6 +67,7 @@ export function extractPostContent(post, sourceNumber) {
   }
 
   const answers = [];
+  const followups = [];
   const responses = [];
 
   for (const child of post.children || []) {
@@ -90,20 +91,40 @@ export function extractPostContent(post, sourceNumber) {
       continue;
     }
 
-    // Code below adds follow-ups to post content (but it doesn't add replies to follow-ups)
-    // if (child.type === "followup") {
-    //   const followupText = getLatestHistoryText(child.history) || stripHtml(child.subject);
-    //   if (followupText) {
-    //     followups.push(
-    //       `<followup${buildAttrs({
-    //         date: lastUpdated,
-    //       })}>${escapeXml(followupText)}</followup>`,
-    //     );
-    //   }
-    //   continue;
-    // }
+    if (child.type === "followup") {
+      if (options.includeFollowups) {
+        const followupText = getLatestHistoryText(child.history) || stripHtml(child.subject);
+        if (followupText) {
+          let followupXml = `    <followup${buildAttrs({
+            date: lastUpdated,
+          })}>\n      <content>${escapeXml(followupText)}</content>`;
 
-    const responseText = getLatestHistoryText(child.history);
+          const replies = [];
+          for (const replyChild of child.children || []) {
+            if (replyChild.type === "feedback") {
+              const replyText =
+                getLatestHistoryText(replyChild.history) || stripHtml(replyChild.subject);
+              if (replyText) {
+                const replyDate =
+                  getLatestHistory(replyChild.history)?.created || replyChild.created;
+                replies.push(
+                  `      <reply${buildAttrs({ date: replyDate })}>${escapeXml(replyText)}</reply>`
+                );
+              }
+            }
+          }
+
+          if (replies.length > 0) {
+            followupXml += "\n" + replies.join("\n");
+          }
+          followupXml += "\n    </followup>";
+          followups.push(followupXml);
+        }
+      }
+      continue;
+    }
+
+    const responseText = getLatestHistoryText(child.history) || stripHtml(child.subject);
     if (responseText) {
       responses.push(
         `<response${buildAttrs({
@@ -115,6 +136,12 @@ export function extractPostContent(post, sourceNumber) {
   }
 
   answers.forEach((answer) => parts.push(`  ${answer}`));
+
+  if (followups.length > 0) {
+    parts.push("  <followups>");
+    followups.forEach((f) => parts.push(f));
+    parts.push("  </followups>");
+  }
 
   if (responses.length) {
     parts.push("  <responses>");

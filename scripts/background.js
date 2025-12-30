@@ -24,6 +24,7 @@ async function handleAiSearch({ query, nid, maxSearchResults }) {
     "model",
     "maxSearchResults",
     "provider",
+    "includeFollowups",
   ]);
 
   if (nid) {
@@ -41,12 +42,21 @@ async function handleAiSearch({ query, nid, maxSearchResults }) {
   const clampedMaxSearchResults = Math.max(1, requestedMaxSearchResults);
   settings.maxSearchResults = clampedMaxSearchResults;
 
+  // Default includeFollowups to false if not set
+  if (settings.includeFollowups === undefined) {
+    settings.includeFollowups = false;
+  }
+
   // Define the search callback for the LLM
   const searchCallback = async (keywords) => {
     const searchResults = await searchPosts(keywords, nid);
-    // Don't include posts with no answers
-    const answeredResults = searchResults.filter((item) => item && item.no_answer === 0);
-    const limitedPostIds = answeredResults
+    // If includeFollowups is enabled, we include posts even if they don't have a formal answer
+    const filteredResults = searchResults.filter((item) => {
+      if (!item) return false;
+      if (settings.includeFollowups) return true;
+      return item.no_answer === 0;
+    });
+    const limitedPostIds = filteredResults
       .map((item) => item.id)
       .filter(Boolean)
       .slice(0, clampedMaxSearchResults);

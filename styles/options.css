@@ -70,6 +70,23 @@ select {
   gap: 12px;
 }
 
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.checkbox-group input {
+  width: auto;
+  margin: 0;
+}
+
+.checkbox-group label {
+  margin: 0;
+  cursor: pointer;
+}
+
 .actions {
   display: flex;
   align-items: center;

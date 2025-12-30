@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   model: "",
   apiKeys: {}, // Store keys per provider: { xai: "...", google: "..." }
   maxSearchResults: 10,
+  includeFollowups: false,
 };
 
 const CUSTOM_MODEL_VALUE = "__custom__";
@@ -20,6 +21,7 @@ const elements = {
   apiKey: document.getElementById("apiKey"),
   apiKeyLink: document.getElementById("apiKeyLink"),
   maxSearchResults: document.getElementById("maxSearchResults"),
+  includeFollowups: document.getElementById("includeFollowups"),
   status: document.getElementById("status"),
 };
 
@@ -104,6 +106,7 @@ async function loadSettings() {
   elements.provider.value = settings.provider;
   updateModelOptions(settings.provider, settings.model);
   elements.maxSearchResults.value = settings.maxSearchResults;
+  elements.includeFollowups.checked = settings.includeFollowups;
 }
 
 // Handle provider change
@@ -136,6 +139,7 @@ elements.form.addEventListener("submit", async (event) => {
     model: selectedModel,
     apiKeys: currentApiKeys,
     maxSearchResults: Number(elements.maxSearchResults.value || DEFAULT_SETTINGS.maxSearchResults),
+    includeFollowups: elements.includeFollowups.checked,
   };
 
   await extensionApi.storage.local.set(settings);
