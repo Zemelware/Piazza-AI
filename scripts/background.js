@@ -18,7 +18,7 @@ extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function handleAiSearch({ query, nid, maxSearchResults }) {
+async function handleAiSearch({ query, nid, maxSearchResults, modelOverride }) {
   const settings = await extensionApi.storage.local.get([
     "apiKeys",
     "model",
@@ -45,6 +45,12 @@ async function handleAiSearch({ query, nid, maxSearchResults }) {
   // Default includeFollowups to false if not set
   if (settings.includeFollowups === undefined) {
     settings.includeFollowups = false;
+  }
+
+  // Apply model override if provided
+  if (modelOverride && modelOverride.providerId && modelOverride.modelId) {
+    settings.provider = modelOverride.providerId;
+    settings.model = modelOverride.modelId;
   }
 
   // Define the search callback for the LLM

@@ -130,3 +130,123 @@ button {
   font-size: 12px;
   color: #5a688a;
 }
+
+/* Model Selection with Favourite Button */
+.model-select-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.model-select-wrapper select {
+  flex: 1;
+}
+
+.favourite-btn {
+  width: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #cdd9f4;
+  transition: all 0.2s ease;
+}
+
+.favourite-btn:hover {
+  background: #fff9e6;
+  border-color: #ffb347;
+}
+
+.favourite-btn.active {
+  background: #ffb347;
+  border-color: #ff9f1c;
+}
+
+.favourite-btn.active .star-icon {
+  fill: #2d1b00;
+}
+
+.star-icon {
+  width: 20px;
+  height: 20px;
+  stroke: #ffb347;
+  stroke-width: 2;
+  fill: none;
+  transition: fill 0.2s ease;
+}
+
+.favourite-btn.active .star-icon {
+  stroke: #2d1b00;
+}
+
+/* Favourite Models List */
+.favourite-models-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.favourite-model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f7fbff;
+  border: 1px solid #e6ecfb;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.favourite-model-item:hover {
+  background: #eef5ff;
+  border-color: #cdd9f4;
+}
+
+.favourite-model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.favourite-model-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2c4c;
+}
+
+.favourite-model-provider {
+  font-size: 12px;
+  color: #5a688a;
+}
+
+.favourite-model-remove {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.favourite-model-remove:hover {
+  background: #ffe0e0;
+}
+
+.favourite-model-remove svg {
+  width: 18px;
+  height: 18px;
+  stroke: #dc2626;
+  stroke-width: 2;
+}
+
+.favourite-models-empty {
+  text-align: center;
+  padding: 32px 20px;
+  color: #9ca3af;
+  font-size: 13px;
+}

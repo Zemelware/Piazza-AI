@@ -4,6 +4,8 @@
   let aiPanel = null;
   let aiBackdrop = null;
   let isSearching = false;
+  let favouriteModels = [];
+  let selectedModelOverride = null;
 
   function ensureRenderersLoaded() {
     if (window.marked && !window.__piazzaAiMarkedInitialized) {
@@ -85,6 +87,52 @@
     return new Promise((resolve) => extensionApi.storage.local.get(["panelWidth"], resolve));
   }
 
+  function getStoredFavouriteModels() {
+    const result = extensionApi.storage.local.get(["favouriteModels"]);
+    if (result && typeof result.then === "function") {
+      return result;
+    }
+    return new Promise((resolve) => extensionApi.storage.local.get(["favouriteModels"], resolve));
+  }
+
+  async function loadAndPopulateModelSelector() {
+    const stored = await getStoredFavouriteModels();
+    favouriteModels = stored.favouriteModels || [];
+    
+    const modelSelector = document.getElementById("piazza-ai-model-select");
+    const modelSelectorWrapper = document.getElementById("piazza-ai-model-selector-wrapper");
+    
+    if (!modelSelector || !modelSelectorWrapper) return;
+    
+    if (favouriteModels.length === 0) {
+      modelSelectorWrapper.classList.remove("visible");
+      return;
+    }
+    
+    modelSelectorWrapper.classList.add("visible");
+    
+    // Populate options
+    modelSelector.innerHTML = '<option value="">Default model</option>' +
+      favouriteModels
+        .map((fav) => {
+          const displayName = `${fav.modelName} (${fav.providerName})`;
+          const value = `${fav.providerId}:${fav.modelId}`;
+          return `<option value="${escapeHtml(value)}">${escapeHtml(displayName)}</option>`;
+        })
+        .join("");
+    
+    // Add event listener
+    modelSelector.addEventListener("change", () => {
+      selectedModelOverride = modelSelector.value || null;
+    });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   function sendExtensionMessage(message) {
     const result = extensionApi.runtime.sendMessage(message);
     if (result && typeof result.then === "function") {
@@ -116,6 +164,9 @@
 
     // Initialize Resizer
     initResizer();
+    
+    // Load and populate model selector
+    loadAndPopulateModelSelector();
 
     // Event Listeners
     document.getElementById("piazza-ai-panel-close").onclick = closeAiPanel;
@@ -247,9 +298,17 @@
     setSearching(true);
     showLoading();
 
+    const payload = { query, nid, maxSearchResults };
+    
+    // Add model override if selected
+    if (selectedModelOverride) {
+      const [providerId, modelId] = selectedModelOverride.split(":");
+      payload.modelOverride = { providerId, modelId };
+    }
+
     sendExtensionMessage({
       type: "AI_SEARCH",
-      payload: { query, nid, maxSearchResults },
+      payload: payload,
     })
       .then(async (response) => {
         setSearching(false);

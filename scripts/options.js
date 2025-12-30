@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   apiKeys: {}, // Store keys per provider: { xai: "...", google: "..." }
   maxSearchResults: 10,
   includeFollowups: false,
+  favouriteModels: [], // Array of { providerId, modelId, providerName, modelName }
 };
 
 const CUSTOM_MODEL_VALUE = "__custom__";
@@ -23,11 +24,15 @@ const elements = {
   maxSearchResults: document.getElementById("maxSearchResults"),
   includeFollowups: document.getElementById("includeFollowups"),
   status: document.getElementById("status"),
+  favouriteModelBtn: document.getElementById("favouriteModelBtn"),
+  favouriteModelsSection: document.getElementById("favouriteModelsSection"),
+  favouriteModelsList: document.getElementById("favouriteModelsList"),
 };
 
 // Keep track of current keys in memory to handle switching
 let currentApiKeys = {};
 let currentProvider = DEFAULT_PROVIDER;
+let favouriteModels = [];
 
 function setStatus(message) {
   elements.status.textContent = message;
@@ -44,6 +49,135 @@ function setCustomModelVisibility(visible) {
     elements.customModel.value = "";
   }
 }
+
+/**
+ * Check if the current model is favourited.
+ */
+function isCurrentModelFavourited() {
+  const providerId = elements.provider.value;
+  const modelId =
+    elements.model.value === CUSTOM_MODEL_VALUE
+      ? elements.customModel.value.trim()
+      : elements.model.value;
+
+  return favouriteModels.some(
+    (fav) => fav.providerId === providerId && fav.modelId === modelId
+  );
+}
+
+/**
+ * Update the favourite button state based on current selection.
+ */
+function updateFavouriteButtonState() {
+  const isFavourited = isCurrentModelFavourited();
+  elements.favouriteModelBtn.classList.toggle("active", isFavourited);
+  elements.favouriteModelBtn.title = isFavourited
+    ? "Remove from favourites"
+    : "Add to favourites";
+}
+
+/**
+ * Toggle favourite status for the current model.
+ */
+function toggleFavouriteModel() {
+  const providerId = elements.provider.value;
+  const modelId =
+    elements.model.value === CUSTOM_MODEL_VALUE
+      ? elements.customModel.value.trim()
+      : elements.model.value;
+
+  if (!modelId) {
+    setStatus("Please select a model first.");
+    return;
+  }
+
+  const provider = getProvider(providerId);
+  const existingIndex = favouriteModels.findIndex(
+    (fav) => fav.providerId === providerId && fav.modelId === modelId
+  );
+
+  if (existingIndex >= 0) {
+    // Remove from favourites
+    favouriteModels.splice(existingIndex, 1);
+  } else {
+    // Add to favourites
+    const modelInfo =
+      elements.model.value === CUSTOM_MODEL_VALUE
+        ? { id: modelId, name: modelId }
+        : provider.models.find((m) => m.id === modelId) || {
+            id: modelId,
+            name: modelId,
+          };
+
+    favouriteModels.push({
+      providerId: providerId,
+      modelId: modelId,
+      providerName: provider.name,
+      modelName: modelInfo.name,
+    });
+  }
+
+  updateFavouriteButtonState();
+  renderFavouriteModels();
+  saveFavouriteModels();
+}
+
+/**
+ * Render the list of favourite models.
+ */
+function renderFavouriteModels() {
+  if (favouriteModels.length === 0) {
+    elements.favouriteModelsSection.classList.add("hidden");
+    return;
+  }
+
+  elements.favouriteModelsSection.classList.remove("hidden");
+  elements.favouriteModelsList.innerHTML = favouriteModels
+    .map(
+      (fav, index) => `
+      <div class="favourite-model-item">
+        <div class="favourite-model-info">
+          <div class="favourite-model-name">${escapeHtml(fav.modelName)}</div>
+          <div class="favourite-model-provider">${escapeHtml(fav.providerName)}</div>
+        </div>
+        <button type="button" class="favourite-model-remove" data-index="${index}" title="Remove from favourites">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    `
+    )
+    .join("");
+
+  // Add event listeners to remove buttons
+  elements.favouriteModelsList.querySelectorAll(".favourite-model-remove").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const index = parseInt(btn.dataset.index);
+      favouriteModels.splice(index, 1);
+      renderFavouriteModels();
+      updateFavouriteButtonState();
+      saveFavouriteModels();
+    });
+  });
+}
+
+/**
+ * Save favourite models to storage.
+ */
+async function saveFavouriteModels() {
+  await extensionApi.storage.local.set({ favouriteModels });
+}
+
+/**
+ * Escape HTML to prevent XSS.
+ */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 
 /**
  * Populate the provider dropdown with available providers.
@@ -101,12 +235,16 @@ async function loadSettings() {
 
   currentApiKeys = settings.apiKeys || {};
   currentProvider = settings.provider;
+  favouriteModels = settings.favouriteModels || [];
 
   populateProviders();
   elements.provider.value = settings.provider;
   updateModelOptions(settings.provider, settings.model);
   elements.maxSearchResults.value = settings.maxSearchResults;
   elements.includeFollowups.checked = settings.includeFollowups;
+  
+  renderFavouriteModels();
+  updateFavouriteButtonState();
 }
 
 // Handle provider change
@@ -116,11 +254,22 @@ elements.provider.addEventListener("change", () => {
 
   currentProvider = elements.provider.value;
   updateModelOptions(currentProvider);
+  updateFavouriteButtonState();
 });
 
 elements.model.addEventListener("change", () => {
   const isCustom = elements.model.value === CUSTOM_MODEL_VALUE;
   setCustomModelVisibility(isCustom);
+  updateFavouriteButtonState();
+});
+
+elements.customModel.addEventListener("input", () => {
+  updateFavouriteButtonState();
+});
+
+elements.favouriteModelBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  toggleFavouriteModel();
 });
 
 elements.form.addEventListener("submit", async (event) => {
@@ -140,6 +289,7 @@ elements.form.addEventListener("submit", async (event) => {
     apiKeys: currentApiKeys,
     maxSearchResults: Number(elements.maxSearchResults.value || DEFAULT_SETTINGS.maxSearchResults),
     includeFollowups: elements.includeFollowups.checked,
+    favouriteModels: favouriteModels,
   };
 
   await extensionApi.storage.local.set(settings);

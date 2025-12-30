@@ -44,16 +44,23 @@ const PiazzaAITemplates = {
           <button id="piazza-ai-panel-close">${this.icons.close}</button>
         </div>
         <form class="piazza-ai-search-form" id="piazza-ai-search-form">
-          <div class="piazza-ai-search-input-wrapper">
-            ${this.icons.search}
-            <input 
-              type="text" 
-              id="piazza-ai-search-input" 
-              placeholder="Ask anything about this class..."
-              autocomplete="off"
-            />
+          <div class="piazza-ai-model-selector-wrapper" id="piazza-ai-model-selector-wrapper">
+            <select id="piazza-ai-model-select" class="piazza-ai-model-select">
+              <option value="">Default model</option>
+            </select>
           </div>
-          <button type="submit" id="piazza-ai-search-submit">Search</button>
+          <div class="piazza-ai-search-row">
+            <div class="piazza-ai-search-input-wrapper">
+              ${this.icons.search}
+              <input 
+                type="text" 
+                id="piazza-ai-search-input" 
+                placeholder="Ask anything about this class..."
+                autocomplete="off"
+              />
+            </div>
+            <button type="submit" id="piazza-ai-search-submit">Search</button>
+          </div>
         </form>
         <div class="piazza-ai-kbd-hint">
           <span>Press</span>
