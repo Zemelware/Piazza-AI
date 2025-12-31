@@ -1,6 +1,7 @@
 import { searchPosts, getPost } from "./piazzaService.js";
 import { generateAnswer } from "./llmService.js";
 import { decodeHtmlEntities } from "./utils.js";
+import { getProvider } from "./providers.js";
 
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
 const DEFAULT_MAX_SEARCH_RESULTS = 10;
@@ -16,9 +17,24 @@ extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch((error) => sendResponse({ error: error.message }));
     return true; // Keep channel open for async response
   }
+
+  if (request.type === "GET_MODEL_INFO") {
+    const { providerId, modelId } = request.payload;
+    const provider = getProvider(providerId);
+    if (!provider) {
+      sendResponse({ providerName: providerId, modelName: modelId });
+      return;
+    }
+    const model = provider.models.find((m) => m.id === modelId);
+    sendResponse({
+      providerName: provider.name,
+      modelName: model ? model.name : modelId,
+    });
+    return;
+  }
 });
 
-async function handleAiSearch({ query, nid, maxSearchResults }) {
+async function handleAiSearch({ query, nid, maxSearchResults, modelOverride }) {
   const settings = await extensionApi.storage.local.get([
     "apiKeys",
     "model",
@@ -45,6 +61,12 @@ async function handleAiSearch({ query, nid, maxSearchResults }) {
   // Default includeFollowups to false if not set
   if (settings.includeFollowups === undefined) {
     settings.includeFollowups = false;
+  }
+
+  // Apply model override if provided
+  if (modelOverride && modelOverride.providerId && modelOverride.modelId) {
+    settings.provider = modelOverride.providerId;
+    settings.model = modelOverride.modelId;
   }
 
   // Define the search callback for the LLM

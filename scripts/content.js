@@ -4,6 +4,8 @@
   let aiPanel = null;
   let aiBackdrop = null;
   let isSearching = false;
+  let favouriteModels = [];
+  let selectedModelOverride = null;
 
   function ensureRenderersLoaded() {
     if (window.marked && !window.__piazzaAiMarkedInitialized) {
@@ -85,6 +87,88 @@
     return new Promise((resolve) => extensionApi.storage.local.get(["panelWidth"], resolve));
   }
 
+  function getStoredFavouriteModels() {
+    const result = extensionApi.storage.local.get(["favouriteModels"]);
+    if (result && typeof result.then === "function") {
+      return result;
+    }
+    return new Promise((resolve) => extensionApi.storage.local.get(["favouriteModels"], resolve));
+  }
+
+  function getStoredSettings() {
+    const result = extensionApi.storage.local.get(["provider", "model"]);
+    if (result && typeof result.then === "function") {
+      return result;
+    }
+    return new Promise((resolve) => extensionApi.storage.local.get(["provider", "model"], resolve));
+  }
+
+  async function loadAndPopulateModelSelector() {
+    const [stored, settings] = await Promise.all([getStoredFavouriteModels(), getStoredSettings()]);
+    favouriteModels = stored.favouriteModels || [];
+
+    const modelSelector = document.getElementById("piazza-ai-model-select");
+    const modelSelectorWrapper = document.getElementById("piazza-ai-model-selector-wrapper");
+
+    if (!modelSelector || !modelSelectorWrapper) return;
+
+    if (favouriteModels.length === 0) {
+      modelSelectorWrapper.classList.remove("visible");
+      return;
+    }
+
+    modelSelectorWrapper.classList.add("visible");
+
+    // Build the saved model label from settings
+    let savedModelLabel = "Saved model";
+    const savedProviderId = settings.provider;
+    const savedModelId = settings.model;
+
+    if (savedProviderId && savedModelId) {
+      // Try to find the model name from favourites first
+      const savedFav = favouriteModels.find(
+        (fav) => fav.providerId === savedProviderId && fav.modelId === savedModelId
+      );
+
+      if (savedFav) {
+        savedModelLabel = `${savedFav.modelName} (saved)`;
+      } else {
+        // Model not in favourites, ask background for friendly name
+        try {
+          const info = await sendExtensionMessage({
+            type: "GET_MODEL_INFO",
+            payload: { providerId: savedProviderId, modelId: savedModelId },
+          });
+          if (info && info.modelName) {
+            savedModelLabel = `${info.modelName} (saved)`;
+          } else {
+            savedModelLabel = `${savedModelId} (saved)`;
+          }
+        } catch (e) {
+          savedModelLabel = `${savedModelId} (saved)`;
+        }
+      }
+    }
+
+    // Populate options
+    modelSelector.innerHTML =
+      `<option value="">${escapeHtml(savedModelLabel)}</option>` +
+      favouriteModels
+        .map((fav) => {
+          const displayName = fav.modelName;
+          const value = `${fav.providerId}:${fav.modelId}`;
+          const escapedValue = escapeHtml(value);
+          const escapedDisplayName = escapeHtml(displayName);
+          return `<option value="${escapedValue}">${escapedDisplayName}</option>`;
+        })
+        .join("");
+
+    // Add event listener
+    modelSelector.addEventListener("change", () => {
+      selectedModelOverride = modelSelector.value || null;
+    });
+  }
+
   function sendExtensionMessage(message) {
     const result = extensionApi.runtime.sendMessage(message);
     if (result && typeof result.then === "function") {
@@ -116,6 +200,9 @@
 
     // Initialize Resizer
     initResizer();
+
+    // Load and populate model selector
+    loadAndPopulateModelSelector();
 
     // Event Listeners
     document.getElementById("piazza-ai-panel-close").onclick = closeAiPanel;
@@ -247,9 +334,19 @@
     setSearching(true);
     showLoading();
 
+    const payload = { query, nid, maxSearchResults };
+
+    // Add model override if selected
+    if (selectedModelOverride && selectedModelOverride.includes(":")) {
+      const [providerId, modelId] = selectedModelOverride.split(":");
+      if (providerId && modelId) {
+        payload.modelOverride = { providerId, modelId };
+      }
+    }
+
     sendExtensionMessage({
       type: "AI_SEARCH",
-      payload: { query, nid, maxSearchResults },
+      payload: payload,
     })
       .then(async (response) => {
         setSearching(false);

@@ -23,9 +23,16 @@
             </div>
             <div>
               <label for="model">Model</label>
-              <select id="model">
-                <option value="">Default</option>
-              </select>
+              <div class="model-select-wrapper">
+                <select id="model">
+                  <option value="">Default</option>
+                </select>
+                <button type="button" id="favouriteModelBtn" class="favourite-btn" title="Add to favourites">
+                  <svg class="star-icon" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           <div id="customModelRow" class="hidden">
@@ -54,6 +61,12 @@
             <input id="includeFollowups" type="checkbox" />
             <label for="includeFollowups">Search in follow-up discussions</label>
           </div>
+        </section>
+
+        <section id="favouriteModelsSection" class="hidden">
+          <h2>Favourite Models</h2>
+          <p class="helper-text">Quick access to your preferred models when searching. Click the star next to a model above to add it here.</p>
+          <div id="favouriteModelsList" class="favourite-models-list"></div>
         </section>
 
         <div class="actions">
