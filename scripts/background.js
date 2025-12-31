@@ -1,6 +1,7 @@
 import { searchPosts, getPost } from "./piazzaService.js";
 import { generateAnswer } from "./llmService.js";
 import { decodeHtmlEntities } from "./utils.js";
+import { getProvider } from "./providers.js";
 
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
 const DEFAULT_MAX_SEARCH_RESULTS = 10;
@@ -15,6 +16,21 @@ extensionApi.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then(sendResponse)
       .catch((error) => sendResponse({ error: error.message }));
     return true; // Keep channel open for async response
+  }
+
+  if (request.type === "GET_MODEL_INFO") {
+    const { providerId, modelId } = request.payload;
+    const provider = getProvider(providerId);
+    if (!provider) {
+      sendResponse({ providerName: providerId, modelName: modelId });
+      return;
+    }
+    const model = provider.models.find((m) => m.id === modelId);
+    sendResponse({
+      providerName: provider.name,
+      modelName: model ? model.name : modelId,
+    });
+    return;
   }
 });
 
