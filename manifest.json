@@ -3,6 +3,12 @@
   "name": "Piazza AI Search",
   "version": "0.1.0",
   "description": "Search Piazza posts with AI assistance.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "piazza-ai-search@ethanzemelman.com",
+      "strict_min_version": "109.0"
+    }
+  },
   "action": {
     "default_title": "Piazza AI"
   },
@@ -19,6 +25,7 @@
   ],
   "background": {
     "service_worker": "scripts/background.js",
+    "scripts": ["scripts/background.js"],
     "type": "module"
   },
   "content_scripts": [
