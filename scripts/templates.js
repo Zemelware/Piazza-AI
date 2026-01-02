@@ -6,6 +6,8 @@
 const PiazzaAITemplates = {
   // SVG Icons
   icons: {
+    logo: `<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="piazza-ai-logo-gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6366f1" /><stop offset="100%" stop-color="#3b82f6" /></linearGradient></defs><rect width="512" height="512" rx="100" fill="url(#piazza-ai-logo-gradient)"/><circle cx="290" cy="220" r="80" fill="white" fill-opacity="0.25"/><rect x="130" y="100" width="60" height="312" rx="30" fill="white"/><circle cx="290" cy="220" r="90" stroke="white" stroke-width="60" fill="none"/><g fill="white"><path d="M290 185 L300 212 L327 220 L300 228 L290 255 L280 228 L253 220 L280 212 Z"/><path d="M330 175 L334 186 L345 190 L334 194 L330 205 L326 194 L315 190 L326 186 Z" opacity="0.9"/><path d="M250 245 L253 252 L260 255 L253 258 L250 265 L247 258 L240 255 L247 252 Z" opacity="0.8"/></g></svg>`,
+
     sparkle: `<svg viewBox="0 0 24 24"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>`,
 
     close: `<svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
@@ -38,7 +40,6 @@ const PiazzaAITemplates = {
       <div class="piazza-ai-panel-header">
         <div class="piazza-ai-panel-header-top">
           <div class="piazza-ai-panel-title">
-            ${this.icons.sparkle}
             <h2>AI Search</h2>
           </div>
           <button id="piazza-ai-panel-close">${this.icons.close}</button>
