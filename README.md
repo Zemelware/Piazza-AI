@@ -29,3 +29,8 @@ Install the extension from the Chrome Web Store:
 2. Click the floating action button or press `Cmd/Ctrl + K`
 3. Type your question in the search panel and press "Search"
 4. The AI will search relevant posts and provide an answer with source links
+
+## Screenshots
+<img width="1280" height="800" alt="piazza AI search panel" src="https://github.com/user-attachments/assets/9100e3cc-32a9-4bcf-b857-16cceb87558c" />
+<img width="1280" height="800" alt="piazza AI search panel" src="https://github.com/user-attachments/assets/3711c1f9-3119-4787-bcc3-b7ace7baee58" />
+<img width="1280" height="800" alt="piazza AI search settings" src="https://github.com/user-attachments/assets/6ff07b0d-de76-449c-a8f8-1a9379056c6f" />
