@@ -12,7 +12,6 @@ export const EMAIL = process.env.PIAZZA_EMAIL || "";
 export const PASSWORD = process.env.PIAZZA_PASSWORD || "";
 export const DEFAULT_CLASS = process.env.PIAZZA_CLASS_ID || "";
 export const BROWSER_PATH = process.env.PIAZZA_BROWSER_PATH || "";
-export const ALLOW_WRITE = /^(1|true|yes)$/i.test(process.env.PIAZZA_ALLOW_WRITE || "");
 
 // How long a tool call waits for the user to finish logging in before returning
 // a "finish logging in, then retry" message. The login itself keeps running.

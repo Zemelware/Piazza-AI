@@ -52,10 +52,26 @@ describe("with password login", () => {
     assert.deepEqual(mock.writes, [], "no write methods should ever be called");
   });
 
-  test("only read tools are exposed by default, all marked read-only", async () => {
+  test("read tools are marked read-only, write tools are not", async () => {
     const { tools } = await session.client.listTools();
-    assert.deepEqual(tools.map((t) => t.name).sort(), READ_TOOLS);
-    for (const t of tools) assert.equal(t.annotations?.readOnlyHint, true, t.name);
+    const readTools = tools.filter((t) => t.annotations?.readOnlyHint === true);
+    const writeTools = tools.filter((t) => t.annotations?.readOnlyHint === false);
+    assert.deepEqual(readTools.map((t) => t.name).sort(), READ_TOOLS);
+    assert.deepEqual(writeTools.map((t) => t.name).sort(), ["add_followup", "create_post"]);
+    assert.equal(tools.length, READ_TOOLS.length + 2);
+    for (const t of writeTools) {
+      assert.equal(t.annotations.destructiveHint, false);
+      assert.equal(t.annotations.openWorldHint, true);
+    }
+  });
+
+  test("tool schemas use a single type per property", async () => {
+    const { tools } = await session.client.listTools();
+    for (const t of tools) {
+      for (const [name, prop] of Object.entries(t.inputSchema.properties || {})) {
+        assert.ok(!Array.isArray(prop.type), `${t.name}.${name} has type ${JSON.stringify(prop.type)}`);
+      }
+    }
   });
 
   test("login saves the session with private permissions", async () => {
@@ -103,7 +119,7 @@ describe("with password login", () => {
     assert.match(text, /### Follow-up 1 \(2025-09-10, unresolved\)\n\nDoes this apply to exams\?/);
     assert.match(text, /- \*\*Reply\*\* \(2025-09-10\): No, exams have no late days\./);
 
-    const missing = await session.call("get_post", { post: 999 });
+    const missing = await session.call("get_post", { post: "999" });
     assert.ok(missing.isError);
     assert.match(missing.text, /Content not found/);
   });
@@ -168,18 +184,6 @@ describe("session handling", () => {
     assert.ok(!isError, text);
     assert.match(text, /CS 101/);
     assert.match(fs.readFileSync(path.join(home, "session.json"), "utf8"), /valid-session/);
-    await client.close();
-  });
-
-  test("write tools are only listed when enabled, with write annotations", async () => {
-    const { client } = await connect(mock, { PIAZZA_ALLOW_WRITE: "true" });
-    const { tools } = await client.listTools();
-    const writeTools = tools.filter((t) => t.annotations?.readOnlyHint === false);
-    assert.deepEqual(writeTools.map((t) => t.name).sort(), ["add_followup", "create_post"]);
-    for (const t of writeTools) {
-      assert.equal(t.annotations.destructiveHint, false);
-      assert.equal(t.annotations.openWorldHint, true);
-    }
     await client.close();
   });
 

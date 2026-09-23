@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ALLOW_WRITE, log } from "./config.js";
+import { log } from "./config.js";
 import { PiazzaClient } from "./piazza.js";
 import { registerTools } from "./tools.js";
 
@@ -19,4 +19,4 @@ const server = new McpServer(
 registerTools(server, new PiazzaClient());
 
 await server.connect(new StdioServerTransport());
-log(`Server running${ALLOW_WRITE ? " (write tools enabled)" : ""}`);
+log("Server running");

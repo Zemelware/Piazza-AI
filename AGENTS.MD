@@ -36,7 +36,7 @@ The extension is fully self-contained and does not require a hosted backend.
 A separate Node package (`piazza-mcp` on npm) that exposes Piazza to any MCP client over stdio. It runs locally on the user's machine; no hosting.
 
 - `src/index.js`: Entry point; creates the `McpServer` and connects stdio.
-- `src/tools.js`: Tool definitions. Read tools (`list_classes`, `get_class_info`, `list_folders`, `search_posts`, `get_feed`, `get_folder_posts`, `get_post`, `login`) are annotated `readOnlyHint: true`. Write tools (`create_post`, `add_followup`) are registered only when `PIAZZA_ALLOW_WRITE=true`, and each call must be approved by the user through an MCP elicitation prompt.
+- `src/tools.js`: Tool definitions. Read tools (`list_classes`, `get_class_info`, `list_folders`, `search_posts`, `get_feed`, `get_folder_posts`, `get_post`, `login`) are annotated `readOnlyHint: true`. Write tools (`create_post`, `add_followup`) are always registered, annotated as non-read-only, and each call must be approved by the user through an MCP elicitation prompt.
 - `src/piazza.js`: Piazza client: session handling (re-login on expiry), class resolution, API wrappers.
 - `src/auth.js`: Browser login by default (puppeteer-core drives the user's installed Chrome/Edge/Brave/Chromium and captures cookies once `user.status` succeeds), optional email/password login, session file at `~/.piazza-mcp/session.json` (mode 600).
 - `src/api.js`: Raw JSON-RPC calls to `piazza.com/logic/api`. `src/format.js`: HTML/`<md>` content to markdown, post and feed formatting.

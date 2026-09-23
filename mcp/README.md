@@ -37,19 +37,14 @@ The login uses Chrome, Edge, Brave or Chromium, whichever is installed.
 | `get_folder_posts` | All posts in a folder |
 | `get_post` | A full post with its answers and follow-up discussion |
 | `login` | Check the login, or log in again (e.g. to switch accounts) |
+| `create_post` | Post a new question or note |
+| `add_followup` | Add a follow-up to an existing post |
 
-All of these are read-only and marked with `readOnlyHint`, so clients can auto-approve them.
+The read tools are marked with `readOnlyHint`, so clients can auto-approve them.
 
 Most tools take an optional `class_id`, which can be a class ID or a course number like `"CS 101"`. If you have only one active class, it's used automatically.
 
-### Posting (off by default)
-
-Setting `PIAZZA_ALLOW_WRITE` to `true` adds two more tools:
-
-| Tool | What it does |
-|---|---|
-| `create_post` | Post a new question or note |
-| `add_followup` | Add a follow-up to an existing post |
+### Posting
 
 Before anything is published, the server shows you the exact post in a confirmation prompt, and it's posted only if you check the box and accept. This works through MCP [elicitation](https://modelcontextprotocol.io/specification/latest/client/elicitation), so it applies even if you've set the tool to "always allow". In clients that don't support elicitation, these tools refuse to post. They're also marked as non-read-only tools, so clients will ask for permission before running them.
 
@@ -72,7 +67,6 @@ All settings are optional environment variables, set under `"env"` in the config
 | Variable | Description |
 |---|---|
 | `PIAZZA_CLASS_ID` | Default class (ID or course number) when a tool call doesn't specify one |
-| `PIAZZA_ALLOW_WRITE` | `true` enables the posting tools described above |
 | `PIAZZA_BROWSER_PATH` | Browser executable to use for login, if it isn't found automatically |
 | `PIAZZA_EMAIL`, `PIAZZA_PASSWORD` | Log in with email and password instead of a browser (e.g. on a server). Doesn't work for school SSO accounts. |
 | `PIAZZA_MCP_HOME` | Where the session is stored (default `~/.piazza-mcp`) |
