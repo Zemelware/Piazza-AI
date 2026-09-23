@@ -4,6 +4,7 @@ import {
   decodeEntities,
   formatDate,
   formatPost,
+  formatPostError,
   formatSummaries,
   isPinned,
   isUnanswered,
@@ -318,7 +319,7 @@ export function registerTools(server, piazza) {
           try {
             return formatPost(await piazza.getPost(network.id, normalizePostRef(ref)), network, { detail });
           } catch (error) {
-            return `<piazza_post number="${ref.replace(/^[@#]/, "")}">\nCouldn't load post ${ref}: ${error.message}\n</piazza_post>`;
+            return formatPostError(ref, `Couldn't load this post: ${error.message}`);
           }
         })
       );
@@ -337,6 +338,9 @@ export function registerTools(server, piazza) {
         }
         out.push(text);
         size += text.length;
+      }
+      if (detail === "concise") {
+        out.push('Concise view: text shortened and follow-up replies hidden. Use detail: "full" to see everything.');
       }
       return out.join("\n\n");
     }
