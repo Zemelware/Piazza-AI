@@ -10,6 +10,10 @@ A Chrome extension that adds AI-powered search capabilities to Piazza, allowing 
 - **Rich Formatting**: Supports Markdown and LaTeX math rendering in responses
 - **Resizable Side Panel**: Convenient UI that doesn't interfere with normal Piazza usage
 
+## MCP Server
+
+The [`mcp/`](mcp/) folder contains an MCP server that lets any AI client (Claude, Cursor, Codex, etc.) search and read your Piazza classes. See [mcp/README.md](mcp/README.md) for setup.
+
 ## Installation
 
 Install the extension from the Chrome Web Store:
