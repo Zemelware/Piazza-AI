@@ -46,7 +46,7 @@ Most tools take an optional `class_id`, which can be a class ID or a course numb
 
 ### Posting
 
-Before anything is published, the server shows you the exact post in a confirmation prompt, and it's posted only if you check the box and accept. This works through MCP [elicitation](https://modelcontextprotocol.io/specification/latest/client/elicitation), so it applies even if you've set the tool to "always allow". In clients that don't support elicitation, these tools refuse to post. They're also marked as non-read-only tools, so clients will ask for permission before running them.
+Posts and follow-ups are anonymous to classmates by default (instructors may still see who posted); ask the AI to post under your name if you want it shown. Before anything is published, the server shows you the exact post in a confirmation prompt, and it's posted only if you check the box and accept. This works through MCP [elicitation](https://modelcontextprotocol.io/specification/latest/client/elicitation), so it applies even if you've set the tool to "always allow". In clients that don't support elicitation, these tools refuse to post. They're also marked as non-read-only tools, so clients will ask for permission before running them.
 
 ## Configuration
 

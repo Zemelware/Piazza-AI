@@ -361,7 +361,7 @@ export function registerTools(server, piazza) {
   const anonymousParam = z
     .boolean()
     .optional()
-    .describe("Post anonymously to classmates (instructors may still see the author). Default false.");
+    .describe("Post anonymously to classmates (instructors may still see the author). Default true; set false only if the user asks to post under their name.");
 
   tool(
     "create_post",
@@ -381,7 +381,7 @@ export function registerTools(server, piazza) {
       },
       annotations: WRITE,
     },
-    async ({ class_id, type, subject, content, folders, anonymous = false }) => {
+    async ({ class_id, type, subject, content, folders, anonymous = true }) => {
       const network = await piazza.resolveClass(class_id);
 
       // Map folder names to the class's real folders so the model can't invent any.
@@ -426,7 +426,7 @@ export function registerTools(server, piazza) {
       },
       annotations: WRITE,
     },
-    async ({ post, content, class_id, anonymous = false }) => {
+    async ({ post, content, class_id, anonymous = true }) => {
       const network = await piazza.resolveClass(class_id);
       const target = await piazza.getPost(network.id, normalizePostRef(post));
       const subject = decodeEntities(target?.history?.[0]?.subject || "(no subject)");
