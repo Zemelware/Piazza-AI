@@ -19,8 +19,8 @@ const classIdParam = z
   .string()
   .optional()
   .describe(
-    "Class ID from piazza_list_classes, or a course number like \"CS 101\". " +
-      "Optional if the user has only one active class or set a default class."
+    "Class ID or course number (e.g. \"CS 101\") from piazza_list_classes. " +
+      "Can be omitted when the user has only one active class."
   );
 
 // A plain string (not string|number) keeps the schema portable across clients.
@@ -82,11 +82,10 @@ export function registerTools(server, piazza) {
     {
       title: "Log in to Piazza",
       description:
-        "Check the Piazza login, or log in. If the user isn't logged in, this opens a browser window " +
-        "where they log in to Piazza normally (including school SSO). Other tools log in automatically " +
-        "when needed, so only call this if the user asks or to switch accounts (force: true).",
+        "Check the Piazza login, or log in via a browser window. Other tools log in automatically, so " +
+        "only call this if the user asks.",
       inputSchema: {
-        force: z.boolean().optional().describe("Log out and log in again, e.g. to switch accounts."),
+        force: z.boolean().optional().describe("Log out and log in again, e.g. to switch accounts. Default false."),
       },
       annotations: READ,
     },
@@ -108,11 +107,10 @@ export function registerTools(server, piazza) {
     {
       title: "List Piazza classes",
       description:
-        "List the user's Piazza classes with their IDs and folder names. Use the ID or course number as " +
-        "class_id in other tools. Pick the class from context when it's clear; ask the user if it's " +
-        "ambiguous. Folder names tell you how the class organizes posts (e.g. hw1, exam, logistics).",
+        "List the user's Piazza classes with their IDs and folders. If it's unclear which class the user " +
+        "means, ask them.",
       inputSchema: {
-        include_inactive: z.boolean().optional().describe("Also list past/inactive classes."),
+        include_inactive: z.boolean().optional().describe("Also list past classes. Default false."),
       },
       annotations: READ,
     },
@@ -137,9 +135,7 @@ export function registerTools(server, piazza) {
     {
       title: "Get class info",
       description:
-        "Get a class's course information page: description, staff, office hours, general info, " +
-        "syllabus and course resources (links and files). Use for logistics questions like " +
-        "\"when are office hours?\" or \"who are the TAs?\".",
+        "Get a class's course info: description, staff, office hours, syllabus and resources.",
       inputSchema: { class_id: classIdParam },
       annotations: READ,
     },
@@ -208,22 +204,33 @@ export function registerTools(server, piazza) {
     {
       title: "Find Piazza posts",
       description:
-        "Find posts in a class. Returns one-line summaries (post number, title, answer status, folders, " +
-        "snippet); read the ones that look relevant with piazza_read_posts.\n\n" +
-        "Combine any of:\n" +
-        "- query: keyword search. Piazza matches keywords, not meaning, so use 1-3 distinctive words " +
-        "(\"late policy\", \"recursion\") and retry with synonyms if nothing matches.\n" +
-        "- folder: only posts in this folder (folder names are listed by piazza_list_classes; " +
-        "\"assignment 1\" might be \"hw1\"). Often better than a query for everything about one assignment.\n" +
-        "- filter: unread (new activity since the user last looked), following, unanswered (questions " +
-        "with no answer), pinned (usually important logistics).\n" +
-        "With none of these, returns the most recently updated posts.",
+        "Find posts in a class by keyword, folder and/or filter (all optional and combinable; with none, " +
+        "returns the most recently updated posts). Returns one-line summaries; read posts with " +
+        "piazza_read_posts.",
       inputSchema: {
         class_id: classIdParam,
-        query: z.string().optional().describe("Search keywords."),
-        folder: z.string().optional().describe("Folder name."),
-        filter: z.enum(["unread", "following", "unanswered", "pinned"]).optional(),
-        limit: z.number().int().min(1).max(50).optional().describe("Max posts to return (default 20)."),
+        query: z
+          .string()
+          .optional()
+          .describe(
+            "Keywords, not a question. Piazza matches words, not meaning: use 1-3 distinctive words " +
+              "(\"late policy\") and retry with synonyms if nothing matches."
+          ),
+        folder: z
+          .string()
+          .optional()
+          .describe(
+            "Folder name from piazza_list_classes (\"assignment 1\" might be \"hw1\"). Often better than a " +
+              "query for everything about one assignment or topic."
+          ),
+        filter: z
+          .enum(["unread", "following", "unanswered", "pinned"])
+          .optional()
+          .describe(
+            "unread: new activity since the user last looked. following: posts the user follows. " +
+              "unanswered: questions with no answer. pinned: pinned by instructors, usually logistics."
+          ),
+        limit: z.number().int().min(1).max(50).optional().describe("Max posts to return. Default 20."),
         offset: z.number().int().min(0).optional().describe("Skip this many matching posts, for paging."),
       },
       annotations: READ,
@@ -284,23 +291,21 @@ export function registerTools(server, piazza) {
     {
       title: "Read Piazza posts",
       description:
-        "Read one or more posts in full: the question or note, the instructor and student answers, and " +
-        "the follow-up discussion. Pass every post you want in one call. Cite the post URL when " +
-        "answering from a post. Instructor answers and instructor-endorsed student answers are the most " +
-        "reliable; unendorsed student answers may be wrong.",
+        "Read posts with their answers and follow-up discussion. Instructor answers and " +
+        "instructor-endorsed student answers are the most reliable. Cite the post URL.",
       inputSchema: {
         posts: z
           .array(z.string().min(1))
           .min(1)
           .max(10)
-          .describe('Post numbers like "@12" or "12" (or internal post IDs). Up to 10.'),
+          .describe('Post numbers like "@12" (or internal post IDs), up to 10. Request all posts you need in one call.'),
         class_id: classIdParam,
         detail: z
           .enum(["concise", "full"])
           .optional()
           .describe(
-            "full (default): everything, including follow-up replies. concise: shortened body and answers, " +
-              "one line per follow-up; use it to skim many posts."
+            "full (default): everything, including follow-up replies. concise: shortened text and one " +
+              "line per follow-up, for skimming many posts."
           ),
       },
       annotations: READ,
@@ -370,19 +375,21 @@ export function registerTools(server, piazza) {
   const anonymousParam = z
     .boolean()
     .optional()
-    .describe("Post anonymously to classmates (instructors may still see the author). Default true; set false only if the user asks to post under their name.");
+    .describe(
+      "Hide the user's name from classmates (instructors may still see it). Default true; set false only " +
+        "if the user asks to post under their name."
+    );
 
   tool(
     "piazza_create_post",
     {
       title: "Create post",
       description:
-        "Publish a new question or note to a Piazza class. Only use this when the user explicitly asks " +
-        "to post. The user must approve the exact post in a confirmation prompt before it is published. " +
-        "Check piazza_find_posts first to avoid duplicating an existing post.",
+        "Publish a new post to a class. Only when the user explicitly asks; they approve it in a " +
+        "confirmation prompt. Check for an existing post with piazza_find_posts first.",
       inputSchema: {
         class_id: classIdParam,
-        type: z.enum(["question", "note"]).describe("question expects answers; note is an announcement/info post."),
+        type: z.enum(["question", "note"]).describe("question: asks for answers. note: shares information."),
         subject: z.string().min(1).max(200).describe("Post title."),
         content: z.string().min(1).describe("Post body as plain text. Blank lines separate paragraphs."),
         folders: z.array(z.string()).min(1).describe("Folders to file the post under, from piazza_list_classes."),
@@ -425,8 +432,8 @@ export function registerTools(server, piazza) {
     {
       title: "Add follow-up",
       description:
-        "Add a follow-up discussion comment to an existing Piazza post. Only use this when the user " +
-        "explicitly asks. The user must approve the exact text in a confirmation prompt before it is published.",
+        "Add a follow-up comment to a post. Only when the user explicitly asks; they approve it in a " +
+        "confirmation prompt.",
       inputSchema: {
         post: postParam,
         content: z.string().min(1).describe("Follow-up text as plain text. Blank lines separate paragraphs."),
