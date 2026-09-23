@@ -96,17 +96,38 @@ export function formatSummary(item) {
   return `- **${ref}** ${subject} (${details.join(" · ")})${preview ? `\n  ${preview}` : ""}`;
 }
 
-export function formatSummaries(items, heading) {
-  if (!items.length) return `${heading}\n\nNo posts found.`;
-  return `${heading}\n\n${items.map(formatSummary).join("\n")}\n\nUse get_post with a post number (e.g. "@12") to read a post in full.`;
+export function formatSummaries(items, heading, footer = "") {
+  if (!items.length) return `${heading}\n\nNo posts found.${footer ? `\n\n${footer}` : ""}`;
+  return [
+    heading,
+    "",
+    items.map(formatSummary).join("\n"),
+    "",
+    footer || 'Read posts with piazza_read_posts (e.g. posts: ["@12", "@15"]).',
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------------------
 // Full post
 // ---------------------------------------------------------------------------
 
+// Character caps per section. "concise" is for skimming several posts;
+// "full" still caps pathological posts so one call can't flood the context.
+const LIMITS = {
+  concise: { body: 700, answer: 900, followup: 250, reply: 0 },
+  full: { body: 6000, answer: 6000, followup: 1500, reply: 800 },
+};
+
+function truncate(text, max) {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()} […truncated]`;
+}
+
 function isInstructorEndorsed(child) {
-  return Array.isArray(child.tag_endorse) && child.tag_endorse.some((e) => e?.role === "instructor" || e?.role === "professor" || e?.role === "ta");
+  return (
+    Array.isArray(child.tag_endorse) &&
+    child.tag_endorse.some((e) => e?.role === "instructor" || e?.role === "professor" || e?.role === "ta")
+  );
 }
 
 function childText(child) {
@@ -114,20 +135,28 @@ function childText(child) {
   return toMarkdown(latest(child)?.content || child.subject || "");
 }
 
-export function formatPost(post, network) {
+/**
+ * Format a post for the model. The post is wrapped in <piazza_post> tags so
+ * class-member-written text is clearly delimited from instructions.
+ * @param {"concise"|"full"} detail
+ */
+export function formatPost(post, network, { detail = "full" } = {}) {
+  const limit = LIMITS[detail];
   const head = latest(post) || {};
   const subject = decodeEntities(head.subject || "(no subject)");
-  const lines = [`# @${post.nr ?? "?"}: ${subject}`, ""];
+  const url = postUrl(network.id, post);
+  const lines = [`<piazza_post number="${post.nr ?? ""}" url="${url}">`, `# @${post.nr ?? "?"}: ${subject}`, ""];
 
-  const meta = [`Class: ${network.course_number || network.name || network.id}`];
-  if (post.type) meta.push(`Type: ${post.type}`);
-  if (post.folders?.length) meta.push(`Folders: ${post.folders.join(", ")}`);
-  if (post.created) meta.push(`Posted: ${formatDate(post.created, { time: true })}`);
-  if (head.created && head.created !== post.created) meta.push(`Edited: ${formatDate(head.created, { time: true })}`);
-  if (post.status === "private") meta.push("Visibility: private");
-  if (post.unique_views) meta.push(`Views: ${post.unique_views}`);
-  if (post.tag_good?.length) meta.push(`Marked good by: ${post.tag_good.length}`);
-  lines.push(meta.join(" · "), `URL: ${postUrl(network.id, post)}`, "", toMarkdown(head.content) || "(no content)");
+  const meta = [];
+  if (post.type) meta.push(post.type);
+  if (post.folders?.length) meta.push(`folders: ${post.folders.join(", ")}`);
+  if (post.created) meta.push(`posted ${formatDate(post.created)}`);
+  if (head.created && formatDate(head.created) !== formatDate(post.created)) meta.push(`edited ${formatDate(head.created)}`);
+  if (post.status === "private") meta.push("private");
+  if (post.unique_views) meta.push(`${post.unique_views} views`);
+  if (post.tag_good?.length) meta.push(`marked good by ${post.tag_good.length}`);
+  if (meta.length) lines.push(meta.join(" · "), "");
+  lines.push(truncate(toMarkdown(head.content), limit.body) || "(no content)");
 
   const children = post.children || [];
 
@@ -142,21 +171,37 @@ export function formatPost(post, network) {
     if (type === "s_answer" && isInstructorEndorsed(answer)) notes.push("endorsed by an instructor");
     const updated = latest(answer)?.created || answer.created;
     if (updated) notes.push(`updated ${formatDate(updated)}`);
-    lines.push("", `## ${label}${notes.length ? ` (${notes.join(", ")})` : ""}`, "", text);
+    lines.push("", `## ${label}${notes.length ? ` (${notes.join(", ")})` : ""}`, "", truncate(text, limit.answer));
+  }
+  if (post.type === "question" && !children.some((c) => c.type === "i_answer" || c.type === "s_answer")) {
+    lines.push("", "_No answers yet._");
   }
 
   const followups = children.filter((c) => c.type === "followup");
   if (followups.length) {
     lines.push("", `## Follow-up discussion (${followups.length})`);
+    if (!limit.reply) lines.push("");
     followups.forEach((followup, i) => {
       const state = followup.no_answer === 1 ? "unresolved" : "resolved";
-      lines.push("", `### Follow-up ${i + 1} (${formatDate(followup.created)}, ${state})`, "", childText(followup));
-      for (const reply of followup.children || []) {
-        const text = childText(reply);
-        if (text) lines.push(`- **Reply** (${formatDate(reply.created)}): ${text.replace(/\n+/g, "\n  ")}`);
+      const replies = (followup.children || []).map(childText).filter(Boolean);
+      const header = `${i + 1}. (${formatDate(followup.created)}, ${state})`;
+      if (!limit.reply) {
+        const count = replies.length ? ` [${replies.length} repl${replies.length === 1 ? "y" : "ies"}]` : "";
+        lines.push(`${header} ${truncate(childText(followup).replace(/\s+/g, " "), limit.followup)}${count}`);
+        return;
       }
+      lines.push("", `${header} ${truncate(childText(followup), limit.followup).replace(/\n+/g, "\n   ")}`);
+      (followup.children || []).forEach((reply) => {
+        const text = childText(reply);
+        if (text) {
+          lines.push(`   - Reply (${formatDate(reply.created)}): ${truncate(text, limit.reply).replace(/\n+/g, "\n     ")}`);
+        }
+      });
     });
+    if (!limit.reply) lines.push("", '_Follow-ups shortened. Use detail: "full" to read them and their replies._');
   }
 
-  return lines.join("\n");
+  // Stop post text from faking the end of the <piazza_post> block.
+  const body = lines.slice(1).join("\n").replace(/<(\/?piazza_post)/gi, "‹$1");
+  return `${lines[0]}\n${body}\n</piazza_post>`;
 }

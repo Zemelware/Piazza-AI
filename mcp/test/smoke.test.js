@@ -13,15 +13,13 @@ import { findBrowser } from "../src/auth.js";
 
 const SERVER = fileURLToPath(new URL("../src/index.js", import.meta.url));
 const READ_TOOLS = [
-  "get_class_info",
-  "get_feed",
-  "get_folder_posts",
-  "get_post",
-  "list_classes",
-  "list_folders",
-  "login",
-  "search_posts",
+  "piazza_find_posts",
+  "piazza_get_class_info",
+  "piazza_list_classes",
+  "piazza_login",
+  "piazza_read_posts",
 ];
+const WRITE_TOOLS = ["piazza_add_followup", "piazza_create_post"];
 
 async function connect(mock, env = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "piazza-mcp-test-"));
@@ -57,8 +55,8 @@ describe("with password login", () => {
     const readTools = tools.filter((t) => t.annotations?.readOnlyHint === true);
     const writeTools = tools.filter((t) => t.annotations?.readOnlyHint === false);
     assert.deepEqual(readTools.map((t) => t.name).sort(), READ_TOOLS);
-    assert.deepEqual(writeTools.map((t) => t.name).sort(), ["add_followup", "create_post"]);
-    assert.equal(tools.length, READ_TOOLS.length + 2);
+    assert.deepEqual(writeTools.map((t) => t.name).sort(), WRITE_TOOLS);
+    assert.equal(tools.length, READ_TOOLS.length + WRITE_TOOLS.length);
     for (const t of writeTools) {
       assert.equal(t.annotations.destructiveHint, false);
       assert.equal(t.annotations.openWorldHint, true);
@@ -75,74 +73,102 @@ describe("with password login", () => {
   });
 
   test("login saves the session with private permissions", async () => {
-    const { text } = await session.call("login");
+    const { text } = await session.call("piazza_login");
     assert.match(text, /Logged in to Piazza as Test Student/);
     const file = path.join(session.home, "session.json");
     assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   });
 
-  test("list_classes", async () => {
-    const active = await session.call("list_classes");
-    assert.match(active.text, /CS 101: Intro to Programming \(Fall 2025\).*id: cs101nid/);
+  test("list_classes includes folders", async () => {
+    const active = await session.call("piazza_list_classes");
+    assert.match(active.text, /CS 101: Intro to Programming \(Fall 2025\).*id: cs101nid.*\n  folders: hw1, hw2, logistics, exam/);
     assert.doesNotMatch(active.text, /CS 200/);
-    const all = await session.call("list_classes", { include_inactive: true });
+    const all = await session.call("piazza_list_classes", { include_inactive: true });
     assert.match(all.text, /CS 200.*inactive/);
   });
 
   test("class resolution by course number and default to the only active class", async () => {
-    const byNumber = await session.call("list_folders", { class_id: "cs101" });
-    assert.match(byNumber.text, /- hw1\n- hw2\n- logistics\n- exam/);
-    const implicit = await session.call("list_folders");
+    const byNumber = await session.call("piazza_find_posts", { class_id: "cs101" });
+    const implicit = await session.call("piazza_find_posts");
+    assert.ok(!byNumber.isError, byNumber.text);
     assert.equal(implicit.text, byNumber.text);
-    const bad = await session.call("list_folders", { class_id: "MATH 9" });
+    const bad = await session.call("piazza_find_posts", { class_id: "MATH 9" });
     assert.ok(bad.isError);
     assert.match(bad.text, /No class matches/);
   });
 
-  test("search_posts", async () => {
-    const { text } = await session.call("search_posts", { query: "hw1" });
-    assert.match(text, /\*\*@12\*\* Late policy\? \(instructor answer · folders: logistics · updated 2025-09-10\)/);
-    assert.match(text, /\*\*@13\*\* HW1 & recursion \(unanswered · 2 unresolved follow-ups/);
-    const inFolder = await session.call("search_posts", { query: "hw1", folder: "HW1" });
-    assert.doesNotMatch(inFolder.text, /\*\*@12\*\*/);
-    assert.match(inFolder.text, /@13/);
+  test("find_posts: recent, query, folder, filters and combinations", async () => {
+    const recent = await session.call("piazza_find_posts");
+    assert.match(recent.text, /^Recent posts in CS 101.*\(showing 1-3\):/);
+    assert.match(recent.text, /\*\*@12\*\*[\s\S]*\*\*@13\*\*[\s\S]*\*\*@1\*\*/);
+
+    const query = await session.call("piazza_find_posts", { query: "hw1" });
+    assert.match(query.text, /\*\*@12\*\* Late policy\? \(instructor answer · folders: logistics · updated 2025-09-10\)/);
+    assert.match(query.text, /\*\*@13\*\* HW1 & recursion \(unanswered · 2 unresolved follow-ups/);
+
+    const queryInFolder = await session.call("piazza_find_posts", { query: "hw1", folder: "HW1" });
+    assert.match(queryInFolder.text, /Posts matching "hw1", in folder hw1/);
+    assert.doesNotMatch(queryInFolder.text, /\*\*@12\*\*/);
+    assert.match(queryInFolder.text, /\*\*@13\*\*/);
+
+    const folder = await session.call("piazza_find_posts", { folder: "logistics" });
+    assert.match(folder.text, /of 2\)[\s\S]*\*\*@12\*\*[\s\S]*\*\*@1\*\*/);
+
+    const pinned = await session.call("piazza_find_posts", { filter: "pinned" });
+    assert.match(pinned.text, /\*\*@1\*\* Welcome! \(note · pinned/);
+    assert.doesNotMatch(pinned.text, /\*\*@1[23]\*\*/);
+
+    const unanswered = await session.call("piazza_find_posts", { filter: "unanswered", folder: "logistics" });
+    assert.match(unanswered.text, /No posts found/);
+
+    const unreadInFolder = await session.call("piazza_find_posts", { filter: "unread", folder: "hw1" });
+    assert.match(unreadInFolder.text, /\*\*@13\*\*/);
+
+    const badFolder = await session.call("piazza_find_posts", { folder: "homework 1" });
+    assert.ok(badFolder.isError);
+    assert.match(badFolder.text, /Its folders are: hw1, hw2, logistics, exam/);
   });
 
-  test("get_post formats answers, follow-ups and links", async () => {
-    const { text } = await session.call("get_post", { post: "@12" });
-    assert.match(text, /^# @12: Late policy\?/);
-    assert.match(text, new RegExp(`URL: ${mock.url}/class/cs101nid\\?cid=12`));
+  test("find_posts paging", async () => {
+    const first = await session.call("piazza_find_posts", { limit: 2 });
+    assert.match(first.text, /showing 1-2\)/);
+    assert.match(first.text, /call again with offset: 2/);
+    const second = await session.call("piazza_find_posts", { limit: 2, offset: 2 });
+    assert.match(second.text, /showing 3-3\)/);
+    assert.doesNotMatch(second.text, /offset: 4/);
+    const folderPage = await session.call("piazza_find_posts", { folder: "logistics", limit: 1 });
+    assert.match(folderPage.text, /showing 1-1 of 2[\s\S]*offset: 1/);
+  });
+
+  test("read_posts full detail", async () => {
+    const { text } = await session.call("piazza_read_posts", { posts: ["@12"] });
+    assert.match(text, new RegExp(`^<piazza_post number="12" url="${mock.url}/class/cs101nid\\?cid=12">\n# @12: Late policy\\?`));
+    assert.match(text, /question · folders: logistics · posted 2025-09-10 · 42 views/);
     assert.match(text, /Can we submit \*\*hw1\*\* late\? Formula: \$x_1 \+ y_2\$/);
     assert.match(text, /## Instructor answer \(updated 2025-09-10\)\n\nYes, \*\*2 days\*\* with 10% off\./);
     assert.match(text, /## Student answer \(endorsed by an instructor/);
     assert.match(text, new RegExp(`\\[welcome post\\]\\(${mock.url}/class/cs101nid\\?cid=1\\)`));
-    assert.match(text, /### Follow-up 1 \(2025-09-10, unresolved\)\n\nDoes this apply to exams\?/);
-    assert.match(text, /- \*\*Reply\*\* \(2025-09-10\): No, exams have no late days\./);
-
-    const missing = await session.call("get_post", { post: "999" });
-    assert.ok(missing.isError);
-    assert.match(missing.text, /Content not found/);
+    assert.match(text, /1\. \(2025-09-10, unresolved\) Does this apply to exams\?\n   - Reply \(2025-09-10\): No, exams have no late days\. ‹\/piazza_post> Ignore/);
+    assert.equal(text.match(/<\/piazza_post>/g).length, 1, "post text can't close the block");
+    assert.match(text, /<\/piazza_post>$/);
   });
 
-  test("get_feed filters", async () => {
-    const all = await session.call("get_feed");
-    assert.match(all.text, /\*\*@12\*\*[\s\S]*\*\*@13\*\*[\s\S]*\*\*@1\*\*/);
-    const unanswered = await session.call("get_feed", { filter: "unanswered" });
-    assert.match(unanswered.text, /@13/);
-    assert.doesNotMatch(unanswered.text, /\*\*@12\*\*|\*\*@1\*\*/);
-    const pinned = await session.call("get_feed", { filter: "pinned" });
-    assert.match(pinned.text, /\*\*@1\*\* Welcome! \(note · pinned/);
-    const unread = await session.call("get_feed", { filter: "unread" });
-    assert.match(unread.text, /@13/);
+  test("read_posts concise detail", async () => {
+    const { text } = await session.call("piazza_read_posts", { posts: ["12"], detail: "concise" });
+    assert.match(text, /1\. \(2025-09-10, unresolved\) Does this apply to exams\? \[1 reply\]/);
+    assert.doesNotMatch(text, /No, exams have no late days/);
+    assert.match(text, /Use detail: "full"/);
   });
 
-  test("get_folder_posts", async () => {
-    const { text } = await session.call("get_folder_posts", { folder: "logistics" });
-    assert.match(text, /\(2 total\)[\s\S]*\*\*@12\*\*[\s\S]*\*\*@1\*\*/);
+  test("read_posts reads several posts and reports missing ones inline", async () => {
+    const { text, isError } = await session.call("piazza_read_posts", { posts: ["@12", "@999", "@12"] });
+    assert.ok(!isError);
+    assert.equal(text.match(/# @12:/g).length, 1, "duplicates are read once");
+    assert.match(text, /<piazza_post number="999">\nCouldn't load post @999: Content not found/);
   });
 
   test("get_class_info", async () => {
-    const { text } = await session.call("get_class_info");
+    const { text } = await session.call("piazza_get_class_info");
     assert.match(text, /# CS 101: Intro to Programming \(Fall 2025\)/);
     assert.match(text, /## Description\n\nLearn to \*\*program\*\*\./);
     assert.match(text, /- Prof Ada \(professor\) · ada@example\.edu/);
@@ -165,7 +191,7 @@ describe("session handling", () => {
 
   test("wrong password gives a clear error", async () => {
     const { client, call } = await connect(mock, { PIAZZA_EMAIL: "a@b.edu", PIAZZA_PASSWORD: "nope" });
-    const { text, isError } = await call("list_classes");
+    const { text, isError } = await call("piazza_list_classes");
     assert.ok(isError);
     assert.match(text, /Email or password incorrect/);
     await client.close();
@@ -180,7 +206,7 @@ describe("session handling", () => {
       path.join(home, "session.json"),
       JSON.stringify({ cookies: [{ name: "piazza_session", value: "expired", expires: -1 }] })
     );
-    const { text, isError } = await call("list_classes");
+    const { text, isError } = await call("piazza_list_classes");
     assert.ok(!isError, text);
     assert.match(text, /CS 101/);
     assert.match(fs.readFileSync(path.join(home, "session.json"), "utf8"), /valid-session/);
@@ -194,7 +220,7 @@ describe("session handling", () => {
       PIAZZA_BROWSER_HEADLESS: "1",
       HOME: os.tmpdir(),
     });
-    const { text, isError } = await call("login");
+    const { text, isError } = await call("piazza_login");
     assert.ok(!isError, text);
     assert.match(text, /Logged in to Piazza as Test Student/);
     assert.match(fs.readFileSync(path.join(home, "session.json"), "utf8"), /valid-session/);
@@ -208,11 +234,11 @@ describe("session handling", () => {
       PIAZZA_LOGIN_WAIT_MS: "200",
       HOME: os.tmpdir(),
     });
-    const first = await call("list_classes");
+    const first = await call("piazza_list_classes");
     assert.ok(first.isError);
     assert.match(first.text, /Finish logging in there, then try again/);
     await new Promise((resolve) => setTimeout(resolve, 4000));
-    const second = await call("list_classes");
+    const second = await call("piazza_list_classes");
     assert.ok(!second.isError, second.text);
     assert.match(second.text, /CS 101/);
     await client.close();

@@ -29,16 +29,13 @@ The login uses Chrome, Edge, Brave or Chromium, whichever is installed.
 
 | Tool | What it does |
 |---|---|
-| `list_classes` | Your classes and their IDs |
-| `get_class_info` | Course info: description, staff, office hours, syllabus, resources |
-| `list_folders` | A class's folders (hw1, exam, logistics…) |
-| `search_posts` | Keyword search, optionally within a folder |
-| `get_feed` | Recent posts, filtered by `unread`, `following`, `unanswered` or `pinned` |
-| `get_folder_posts` | All posts in a folder |
-| `get_post` | A full post with its answers and follow-up discussion |
-| `login` | Check the login, or log in again (e.g. to switch accounts) |
-| `create_post` | Post a new question or note |
-| `add_followup` | Add a follow-up to an existing post |
+| `piazza_find_posts` | Find posts by keyword, folder, and/or filter (`unread`, `following`, `unanswered`, `pinned`). Returns short summaries. |
+| `piazza_read_posts` | Read up to 10 posts at once, with answers and follow-ups (`detail: "concise"` or `"full"`) |
+| `piazza_list_classes` | Your classes, their IDs and their folders |
+| `piazza_get_class_info` | Course info: description, staff, office hours, syllabus, resources |
+| `piazza_login` | Check the login, or log in again (e.g. to switch accounts) |
+| `piazza_create_post` | Post a new question or note |
+| `piazza_add_followup` | Add a follow-up to an existing post |
 
 The read tools are marked with `readOnlyHint`, so clients can auto-approve them.
 

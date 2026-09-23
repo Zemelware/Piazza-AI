@@ -19,7 +19,7 @@ const classIdParam = z
   .string()
   .optional()
   .describe(
-    "Class network ID from list_classes, or a course number like \"CS 101\". " +
+    "Class ID from piazza_list_classes, or a course number like \"CS 101\". " +
       "Optional if the user has only one active class or set a default class."
   );
 
@@ -29,10 +29,6 @@ const postParam = z.string().min(1).describe('Post number (e.g. "@123" or "123")
 function normalizePostRef(post) {
   const ref = String(post).trim().replace(/^[@#]/, "");
   return /^\d+$/.test(ref) ? Number(ref) : ref;
-}
-
-function paginate(items, offset, limit) {
-  return items.slice(offset, offset + limit);
 }
 
 function classLabel(network) {
@@ -82,7 +78,7 @@ export function registerTools(server, piazza) {
   // -------------------------------------------------------------------------
 
   tool(
-    "login",
+    "piazza_login",
     {
       title: "Log in to Piazza",
       description:
@@ -108,12 +104,13 @@ export function registerTools(server, piazza) {
   // -------------------------------------------------------------------------
 
   tool(
-    "list_classes",
+    "piazza_list_classes",
     {
       title: "List Piazza classes",
       description:
-        "List the user's Piazza classes with their IDs. Use the ID (or course number) as class_id in other " +
-        "tools. Pick the class from context when it's clear; ask the user if it's ambiguous.",
+        "List the user's Piazza classes with their IDs and folder names. Use the ID or course number as " +
+        "class_id in other tools. Pick the class from context when it's clear; ask the user if it's " +
+        "ambiguous. Folder names tell you how the class organizes posts (e.g. hw1, exam, logistics).",
       inputSchema: {
         include_inactive: z.boolean().optional().describe("Also list past/inactive classes."),
       },
@@ -128,14 +125,15 @@ export function registerTools(server, piazza) {
         if (c.prof_hash && status.id in c.prof_hash) details.push("you're on course staff");
         if (!isActiveClass(c)) details.push("inactive");
         if (DEFAULT_CLASS && (c.id === DEFAULT_CLASS || c.course_number === DEFAULT_CLASS)) details.push("default");
-        return `- **${classLabel(c)}** (${details.join(" · ")})`;
+        const folders = c.folders?.length ? `\n  folders: ${c.folders.join(", ")}` : "";
+        return `- **${classLabel(c)}** (${details.join(" · ")})${folders}`;
       });
       return `Piazza classes:\n\n${lines.join("\n")}`;
     }
   );
 
   tool(
-    "get_class_info",
+    "piazza_get_class_info",
     {
       title: "Get class info",
       description:
@@ -201,130 +199,141 @@ export function registerTools(server, piazza) {
     }
   );
 
-  tool(
-    "list_folders",
-    {
-      title: "List folders",
-      description:
-        "List a class's folders (e.g. hw1, exam, logistics). Folder names often differ from what people " +
-        "call things (\"assignment 1\" might be \"hw1\" or \"a1\"), so check them before using get_folder_posts.",
-      inputSchema: { class_id: classIdParam },
-      annotations: READ,
-    },
-    async ({ class_id }) => {
-      const network = await piazza.resolveClass(class_id);
-      const folders = network.folders || [];
-      if (!folders.length) return `${classLabel(network)} has no folders.`;
-      return `Folders in ${classLabel(network)}:\n\n${folders.map((f) => `- ${f}`).join("\n")}`;
-    }
-  );
-
   // -------------------------------------------------------------------------
   // Posts
   // -------------------------------------------------------------------------
 
   tool(
-    "search_posts",
+    "piazza_find_posts",
     {
-      title: "Search posts",
+      title: "Find Piazza posts",
       description:
-        "Keyword search over a class's posts. Piazza search matches keywords, not meaning: use 1-3 " +
-        "distinctive words (e.g. \"late policy\", \"recursion hw3\") and try synonyms if nothing comes back. " +
-        "For everything about one assignment or topic, get_folder_posts is often better. " +
-        "Results are summaries; read promising ones with get_post.",
+        "Find posts in a class. Returns one-line summaries (post number, title, answer status, folders, " +
+        "snippet); read the ones that look relevant with piazza_read_posts.\n\n" +
+        "Combine any of:\n" +
+        "- query: keyword search. Piazza matches keywords, not meaning, so use 1-3 distinctive words " +
+        "(\"late policy\", \"recursion\") and retry with synonyms if nothing matches.\n" +
+        "- folder: only posts in this folder (folder names are listed by piazza_list_classes; " +
+        "\"assignment 1\" might be \"hw1\"). Often better than a query for everything about one assignment.\n" +
+        "- filter: unread (new activity since the user last looked), following, unanswered (questions " +
+        "with no answer), pinned (usually important logistics).\n" +
+        "With none of these, returns the most recently updated posts.",
       inputSchema: {
-        query: z.string().min(1).describe("Search keywords."),
         class_id: classIdParam,
-        folder: z.string().optional().describe("Only return posts in this folder."),
-        limit: z.number().int().min(1).max(50).optional().describe("Max results (default 15)."),
+        query: z.string().optional().describe("Search keywords."),
+        folder: z.string().optional().describe("Folder name."),
+        filter: z.enum(["unread", "following", "unanswered", "pinned"]).optional(),
+        limit: z.number().int().min(1).max(50).optional().describe("Max posts to return (default 20)."),
+        offset: z.number().int().min(0).optional().describe("Skip this many matching posts, for paging."),
       },
       annotations: READ,
     },
-    async ({ query, class_id, folder, limit = 15 }) => {
+    async ({ class_id, query, folder, filter, limit = 20, offset = 0 }) => {
       const network = await piazza.resolveClass(class_id);
-      let results = await piazza.search(network.id, query);
+      query = query?.trim();
+
+      let folderName;
       if (folder) {
-        const wanted = folder.toLowerCase();
-        results = results.filter((r) => (r.folders || []).some((f) => f.toLowerCase() === wanted));
+        const known = network.folders || [];
+        folderName = known.find((f) => f.toLowerCase() === folder.trim().toLowerCase());
+        if (!folderName && known.length) {
+          throw new Error(`No folder named "${folder}" in ${classLabel(network)}. Its folders are: ${known.join(", ")}`);
+        }
+        folderName ??= folder.trim();
       }
-      return formatSummaries(
-        results.slice(0, limit),
-        `Search results for "${query}" in ${classLabel(network)}${folder ? `, folder ${folder}` : ""} ` +
-          `(showing ${Math.min(limit, results.length)} of ${results.length}):`
-      );
-    }
-  );
 
-  tool(
-    "get_post",
-    {
-      title: "Get post",
-      description:
-        "Read a full Piazza post: the question or note, the instructor and student answers, and the " +
-        "follow-up discussion. Includes the post URL; cite it when answering from the post.",
-      inputSchema: { post: postParam, class_id: classIdParam },
-      annotations: READ,
-    },
-    async ({ post, class_id }) => {
-      const network = await piazza.resolveClass(class_id);
-      return formatPost(await piazza.getPost(network.id, normalizePostRef(post)), network);
-    }
-  );
-
-  tool(
-    "get_feed",
-    {
-      title: "Get class feed",
-      description:
-        "List a class's recent posts, most recently updated first. Filters: unread (new activity since " +
-        "the user last read it), following, unanswered (questions with no answer), pinned (usually " +
-        "important announcements and logistics).",
-      inputSchema: {
-        class_id: classIdParam,
-        filter: z.enum(["all", "unread", "following", "unanswered", "pinned"]).optional().describe("Default: all."),
-        limit: z.number().int().min(1).max(100).optional().describe("Max posts (default 20)."),
-        offset: z.number().int().min(0).optional().describe("Skip this many posts, for paging."),
-      },
-      annotations: READ,
-    },
-    async ({ class_id, filter = "all", limit = 20, offset = 0 }) => {
-      const network = await piazza.resolveClass(class_id);
+      // Start from the narrowest server-side list, then apply the rest client-side.
       let items;
-      if (filter === "unread") items = await piazza.filterFeed(network.id, { updated: 1 });
+      if (query) items = await piazza.search(network.id, query);
+      else if (folderName) items = await piazza.filterFeed(network.id, { folder: 1, filter_folder: folderName });
+      else if (filter === "unread") items = await piazza.filterFeed(network.id, { updated: 1 });
       else if (filter === "following") items = await piazza.filterFeed(network.id, { following: 1 });
-      else if (filter === "all") items = await piazza.getFeed(network.id, { limit, offset });
-      else {
-        const feed = await piazza.getFeed(network.id, { limit: 500, offset: 0 });
-        items = feed.filter(filter === "unanswered" ? isUnanswered : isPinned);
+      // Plain "recent posts" only fetches one past this page, so the total is unknown.
+      else items = await piazza.getFeed(network.id, { limit: filter ? 500 : offset + limit + 1, offset: 0 });
+      const totalKnown = Boolean(query || folderName || filter);
+
+      if (query && folderName) {
+        items = items.filter((p) => (p.folders || []).includes(folderName));
       }
-      if (filter !== "all") items = paginate(items, offset, limit);
-      const label = filter === "all" ? "Recent posts" : `${filter[0].toUpperCase()}${filter.slice(1)} posts`;
-      return formatSummaries(items, `${label} in ${classLabel(network)}:`);
+      if (filter === "unanswered") items = items.filter(isUnanswered);
+      if (filter === "pinned") items = items.filter(isPinned);
+      if ((filter === "unread" || filter === "following") && (query || folderName)) {
+        const ids = new Set(
+          (await piazza.filterFeed(network.id, filter === "unread" ? { updated: 1 } : { following: 1 })).map((p) => p.id)
+        );
+        items = items.filter((p) => ids.has(p.id));
+      }
+
+      const criteria = [
+        query && `matching "${query}"`,
+        folderName && `in folder ${folderName}`,
+        filter,
+      ].filter(Boolean);
+      const page = items.slice(offset, offset + limit);
+      const total = totalKnown ? ` of ${items.length}` : "";
+      const range = page.length ? ` (showing ${offset + 1}-${offset + page.length}${total})` : "";
+      const heading = `${criteria.length ? `Posts ${criteria.join(", ")}` : "Recent posts"} in ${classLabel(network)}${range}:`;
+      const more =
+        offset + limit < items.length ? `More results: call again with offset: ${offset + limit}. ` : "";
+      return formatSummaries(page, heading, `${more}Read posts with piazza_read_posts (e.g. posts: ["@12", "@15"]).`);
     }
   );
 
   tool(
-    "get_folder_posts",
+    "piazza_read_posts",
     {
-      title: "Get folder posts",
+      title: "Read Piazza posts",
       description:
-        "List the posts in one folder (e.g. every post about hw3). Use list_folders first to get exact " +
-        "folder names.",
+        "Read one or more posts in full: the question or note, the instructor and student answers, and " +
+        "the follow-up discussion. Pass every post you want in one call. Cite the post URL when " +
+        "answering from a post. Instructor answers and instructor-endorsed student answers are the most " +
+        "reliable; unendorsed student answers may be wrong.",
       inputSchema: {
-        folder: z.string().min(1).describe("Folder name, exactly as returned by list_folders."),
+        posts: z
+          .array(z.string().min(1))
+          .min(1)
+          .max(10)
+          .describe('Post numbers like "@12" or "12" (or internal post IDs). Up to 10.'),
         class_id: classIdParam,
-        limit: z.number().int().min(1).max(100).optional().describe("Max posts (default 30)."),
-        offset: z.number().int().min(0).optional().describe("Skip this many posts, for paging."),
+        detail: z
+          .enum(["concise", "full"])
+          .optional()
+          .describe(
+            "full (default): everything, including follow-up replies. concise: shortened body and answers, " +
+              "one line per follow-up; use it to skim many posts."
+          ),
       },
       annotations: READ,
     },
-    async ({ folder, class_id, limit = 30, offset = 0 }) => {
+    async ({ posts, class_id, detail = "full" }) => {
       const network = await piazza.resolveClass(class_id);
-      const items = await piazza.filterFeed(network.id, { folder: 1, filter_folder: folder });
-      return formatSummaries(
-        paginate(items, offset, limit),
-        `Posts in folder "${folder}" of ${classLabel(network)} (${items.length} total):`
+      const refs = [...new Set(posts.map((p) => p.trim()))];
+      const results = await Promise.all(
+        refs.map(async (ref) => {
+          try {
+            return formatPost(await piazza.getPost(network.id, normalizePostRef(ref)), network, { detail });
+          } catch (error) {
+            return `<piazza_post number="${ref.replace(/^[@#]/, "")}">\nCouldn't load post ${ref}: ${error.message}\n</piazza_post>`;
+          }
+        })
       );
+
+      // Keep the whole response comfortably under client tool-output limits.
+      const MAX_CHARS = 60_000;
+      const out = [];
+      let size = 0;
+      for (const [i, text] of results.entries()) {
+        if (size + text.length > MAX_CHARS && out.length) {
+          out.push(
+            `Output limit reached; not shown: ${refs.slice(i).join(", ")}. ` +
+              'Request them in another call, or use detail: "concise".'
+          );
+          break;
+        }
+        out.push(text);
+        size += text.length;
+      }
+      return out.join("\n\n");
     }
   );
 
@@ -364,19 +373,19 @@ export function registerTools(server, piazza) {
     .describe("Post anonymously to classmates (instructors may still see the author). Default true; set false only if the user asks to post under their name.");
 
   tool(
-    "create_post",
+    "piazza_create_post",
     {
       title: "Create post",
       description:
         "Publish a new question or note to a Piazza class. Only use this when the user explicitly asks " +
         "to post. The user must approve the exact post in a confirmation prompt before it is published. " +
-        "Search first to avoid duplicating an existing post.",
+        "Check piazza_find_posts first to avoid duplicating an existing post.",
       inputSchema: {
         class_id: classIdParam,
         type: z.enum(["question", "note"]).describe("question expects answers; note is an announcement/info post."),
         subject: z.string().min(1).max(200).describe("Post title."),
         content: z.string().min(1).describe("Post body as plain text. Blank lines separate paragraphs."),
-        folders: z.array(z.string()).min(1).describe("Folders to file the post under (see list_folders)."),
+        folders: z.array(z.string()).min(1).describe("Folders to file the post under, from piazza_list_classes."),
         anonymous: anonymousParam,
       },
       annotations: WRITE,
@@ -412,7 +421,7 @@ export function registerTools(server, piazza) {
   );
 
   tool(
-    "add_followup",
+    "piazza_add_followup",
     {
       title: "Add follow-up",
       description:
