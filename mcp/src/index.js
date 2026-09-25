@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import fs from "node:fs";
 import { log } from "./config.js";
 import { PiazzaClient } from "./piazza.js";
 import { registerTools } from "./tools.js";
 
+const { version } = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
 const server = new McpServer(
-  { name: "piazza", version: "0.1.0" },
+  { name: "piazza", version },
   {
     instructions:
       "Tools for the user's Piazza class forums. Typical flow: piazza_find_posts to locate posts (by " +

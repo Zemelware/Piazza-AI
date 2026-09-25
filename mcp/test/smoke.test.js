@@ -63,6 +63,11 @@ describe("with password login", () => {
     }
   });
 
+  test("server reports the package version", async () => {
+    const { version } = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    assert.equal(session.client.getServerVersion().version, version);
+  });
+
   test("tool schemas use a single type per property", async () => {
     const { tools } = await session.client.listTools();
     for (const t of tools) {
