@@ -4,11 +4,28 @@ An [MCP](https://modelcontextprotocol.io) server that lets any MCP-compatible AI
 
 It runs on your own computer, so there's nothing to host. You log in to Piazza once in a browser window, and your session is saved on your machine only.
 
-## Setup
+## Install
 
-Requires [Node.js](https://nodejs.org) 18.17 or newer.
+Requires [Node.js](https://nodejs.org) 18.17 or newer. Then run:
 
-Add this to your MCP client's config file (for Claude Desktop, go to **Settings → Developer → Edit Config**):
+```sh
+npx add-mcp piazza-mcp -g --name piazza
+```
+
+This adds the server to the AI tools installed on your computer (Claude Code, Claude Desktop, Codex, Cursor, VS Code and [others](https://github.com/neon-solutions/add-mcp#supported-agents)), asking which ones first.
+
+Restart your AI tool. The first time you ask about Piazza, a browser window opens: log in the way you normally do (password or school SSO). The window closes by itself when you're done. If the session expires later, the window opens again. The login uses Chrome, Edge, Brave or Chromium, whichever is installed.
+
+### Manual setup
+
+To add it to one tool yourself:
+
+```sh
+claude mcp add piazza -s user -- npx -y piazza-mcp   # Claude Code
+codex mcp add piazza -- npx -y piazza-mcp            # Codex
+```
+
+Or add this to your tool's MCP config file (for Claude Desktop, go to **Settings → Developer → Edit Config**):
 
 ```json
 {
@@ -20,10 +37,6 @@ Add this to your MCP client's config file (for Claude Desktop, go to **Settings 
   }
 }
 ```
-
-Restart the client. The first time you ask about Piazza, a browser window opens: log in the way you normally do (password or school SSO). The window closes by itself when you're done. If the session expires later, the window opens again.
-
-The login uses Chrome, Edge, Brave or Chromium, whichever is installed.
 
 ## Tools
 
